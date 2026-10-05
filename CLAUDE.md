@@ -22,18 +22,18 @@ maintainer may talk to you in Spanish; answer in Spanish, write the repo in Engl
 
 ## Commands
 
-| Command                | What it does                                 |
-| ---------------------- | -------------------------------------------- |
-| `npm run dev`          | Dev server on http://localhost:3001          |
-| `npm run build`        | Production build                             |
-| `npm run start`        | Serve the production build on port 3001      |
-| `npm run lint`         | ESLint                                       |
-| `npm run typecheck`    | `tsc --noEmit`                               |
-| `npm run format`       | Prettier write                               |
-| `npm run format:check` | Prettier check                               |
-| `npm test`             | Vitest, single run                           |
-| `npm run test:watch`   | Vitest, watch mode                           |
-| `npm run test:e2e`     | Playwright (starts the dev server if not up) |
+| Command                | What it does                                  |
+| ---------------------- | --------------------------------------------- |
+| `npm run dev`          | Dev server on http://localhost:3001           |
+| `npm run build`        | Production build                              |
+| `npm run start`        | Serve the production build on port 3001       |
+| `npm run lint`         | ESLint                                        |
+| `npm run typecheck`    | `next typegen` (route types) + `tsc --noEmit` |
+| `npm run format`       | Prettier write                                |
+| `npm run format:check` | Prettier check                                |
+| `npm test`             | Vitest, single run                            |
+| `npm run test:watch`   | Vitest, watch mode                            |
+| `npm run test:e2e`     | Playwright (starts the dev server if not up)  |
 
 `lint`, `typecheck`, `format:check` and `test` must pass before proposing a commit.
 
