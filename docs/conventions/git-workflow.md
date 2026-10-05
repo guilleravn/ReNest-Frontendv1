@@ -1,5 +1,20 @@
 # Git workflow
 
+## Branches and syncing
+
+- `main` is never touched directly: no commits, no merges, no pushes to it.
+- `develop` is the integration branch. Every feature/fix branch starts from `develop`, and every
+  PR targets `develop`.
+- Branch naming: `<type>/<linear-code>-<short-slug>` (e.g. `feat/bo-27-listing-detail-page`),
+  using the same `<type>` values as commits.
+- **Before starting any work** (new branch, resuming a branch, or opening a PR): fetch and check
+  whether the remote has commits not yet in the local branch (`git fetch origin` then compare with
+  `git log HEAD..origin/<branch>`). Always branch off the latest `origin/develop`, never a stale
+  local copy.
+- If syncing finds a conflict between remote changes and local uncommitted work, **stop and ask
+  the user** how to handle their local changes (stash, commit first, discard) — never resolve that
+  silently.
+
 ## Plan mode first
 
 Anything non-trivial (a new feature, a new dependency, a cross-cutting refactor) starts in plan
@@ -68,3 +83,18 @@ scope**:
 2. **Never `git push`** unless explicitly asked in that moment.
 3. Never commit `.env.local` or any secret. New env vars go in `.env.example` with a placeholder
    and in the zod schema of `src/lib/env.ts`.
+
+## Pull requests
+
+- **One PR per Linear ticket in this repo**, grouping every commit made for that ticket. If the
+  ticket also needs work in the other repo, that's a separate PR there — link the ticket, not the
+  other PR.
+- PR target is always `develop`. PR title references the Linear code (e.g.
+  `[BO-27] Add listing detail page`); the description summarizes the change and links the ticket.
+- CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests and Playwright
+  e2e (against a real ReNest-Backend instance) automatically on every PR into `develop` — it does
+  not run on plain pushes to feature branches. A PR cannot merge until CI passes and at least one
+  collaborator (not the author) approves it.
+- The e2e job checks out `ReNest-Backend` using the `RENEST_CROSS_REPO_TOKEN` repo secret (a PAT
+  with read access to both repos). If it ever needs rotating, any of the 3 collaborators can
+  generate a new fine-grained PAT and update the secret in both repos' settings.
