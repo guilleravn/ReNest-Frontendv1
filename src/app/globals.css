@@ -1,29 +1,156 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. The app ships a single dark theme; tokens live here as CSS variables
- * so a light theme can be added later by overriding them under a selector.
+ * Design tokens, for both themes. Warm stone neutrals, emerald primary, a serif heading font
+ * over a sans-serif body. Palette extracted from the visual reference at
+ * https://renestapp.vercel.app/feed — that app is light-only, so the dark palette below is our
+ * own, derived from the same hues (see docs/conventions/styling.md). The reference is a source
+ * for palette/typography/shape only, never for layout: it is not responsive.
+ *
+ * Dark is the default (`:root`, unqualified). Light is an override under
+ * `[data-theme="light"]`, ready for a theme switcher; `--radius` and the type tokens don't
+ * change between themes, so they stay defined once below.
  */
 :root {
   color-scheme: dark;
 
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --surface: #171717;
-  --muted: #a1a1aa;
-  --border: #27272a;
-  --accent: #22c55e;
+  /* Surfaces */
+  --background: #0c0a09;
+  --surface: #1c1917;
+  --surface-sunken: #141210;
+  --border: #292524;
+  --border-strong: #44403c;
+
+  /* Text */
+  --foreground: #fafaf9;
+  --muted: #a8a29e;
+  --subtle: #78716c;
+
+  /* Brand (emerald). Hover goes brighter and active dimmer: on a dark surface, raising
+     lightness reads as "more emphasis" better than darkening does. */
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --primary-active: #059669;
+  --primary-foreground: #022c1b;
+
+  /* Generic status */
+  --success: #22c55e;
+  --success-surface: #052e16;
+  --warning: #fbbf24;
+  --warning-surface: #451a03;
+  --error: #f87171;
+  --error-surface: #450a0a;
+  --info: #60a5fa;
+  --info-surface: #172554;
+
+  /* Domain-specific trust/price signals (listing cards) */
+  --verified: #10b981;
+  --verified-surface: #042f23;
+  --protected: #60a5fa;
+  --protected-surface: #172554;
+  --price: #fafaf9;
+  --price-reduced: #fbbf24;
+
+  --accent: #451a03;
+  --ring: #10b981;
+
+  /* Shape and elevation. Shadows lean on opaque black since there's no light surface to cast
+     one against; the card/background contrast does the rest of the elevation work. */
+  --radius: 0.75rem;
+  --elevation-card: 0 1px 2px 0 rgb(0 0 0 / 40%);
+  --elevation-menu: 0 4px 12px -2px rgb(0 0 0 / 50%);
+  --elevation-sheet: 0 12px 32px -8px rgb(0 0 0 / 60%);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #ffffff;
+  --surface: #fafaf9;
+  --surface-sunken: #f5f5f4;
+  --border: #e7e5e4;
+  --border-strong: #d6d3d1;
+
+  --foreground: #1c1917;
+  --muted: #57534e;
+  --subtle: #78716c;
+
+  /* Hover/active go darker here: the usual direction for a light surface. */
+  --primary: #047857;
+  --primary-hover: #065f46;
+  --primary-active: #064e3b;
+  --primary-foreground: #ffffff;
+
+  --success: #16a34a;
+  --success-surface: #dcfce7;
+  --warning: #f59e0b;
+  --warning-surface: #fffbeb;
+  --error: #dc2626;
+  --error-surface: #fee2e2;
+  --info: #2563eb;
+  --info-surface: #eff6ff;
+
+  --verified: #047857;
+  --verified-surface: #ecfdf5;
+  --protected: #1d4ed8;
+  --protected-surface: #eff6ff;
+  --price: #1c1917;
+  --price-reduced: #b45309;
+
+  --accent: #fffbeb;
+  --ring: #047857;
+
+  --elevation-card: 0 1px 2px 0 rgb(28 25 23 / 6%);
+  --elevation-menu: 0 4px 12px -2px rgb(28 25 23 / 10%);
+  --elevation-sheet: 0 12px 32px -8px rgb(28 25 23 / 14%);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
-  --color-muted: var(--muted);
+  --color-surface-sunken: var(--surface-sunken);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-error: var(--error);
+  --color-error-surface: var(--error-surface);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+
+  --color-verified: var(--verified);
+  --color-verified-surface: var(--verified-surface);
+  --color-protected: var(--protected);
+  --color-protected-surface: var(--protected-surface);
+  --color-price: var(--price);
+  --color-price-reduced: var(--price-reduced);
+
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-card: var(--elevation-card);
+  --shadow-menu: var(--elevation-menu);
+  --shadow-sheet: var(--elevation-sheet);
+
+  --font-sans: var(--font-urbanist);
+  --font-heading: var(--font-playfair-display);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
