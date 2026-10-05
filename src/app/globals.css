@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. The app ships a single dark theme; tokens live here as CSS variables
+ * so a light theme can be added later by overriding them under a selector.
+ */
+:root {
+  color-scheme: dark;
+
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --surface: #171717;
+  --muted: #a1a1aa;
+  --border: #27272a;
+  --accent: #22c55e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
