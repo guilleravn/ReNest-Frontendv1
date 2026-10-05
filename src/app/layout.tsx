@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="es"
       data-theme="dark"
       className={`${urbanist.variable} ${playfairDisplay.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >

@@ -83,9 +83,40 @@ in the browser.
 
 ## Routes
 
-| Route | File               | Type             | Auth | Description              |
-| ----- | ------------------ | ---------------- | ---- | ------------------------ |
-| `/`   | `src/app/page.tsx` | Server Component | No   | Placeholder landing page |
+Paths mirror the reference app. Every page below is a placeholder (heading only) until its
+epic is built. Auth is "No" everywhere until the login flow and `src/proxy.ts` exist.
+
+| Route                           | Shell           | Back link (phone) | Description                                                            |
+| ------------------------------- | --------------- | ----------------- | ---------------------------------------------------------------------- |
+| `/`                             | none            | —                 | Redirects to `/feed`                                                   |
+| `/feed`                         | `(tabs)`        | —                 | Feed (Epic 1)                                                          |
+| `/items/[itemId]`               | `(detail)`      | `/feed`           | Item detail (Epic 1)                                                   |
+| `/items/[itemId]/contact`       | `(detail)`      | `/items/[itemId]` | Question to seller (Epic 1)                                            |
+| `/items/[itemId]/pickup`        | `(detail)`      | `/items/[itemId]` | Schedule pickup (Epic 2)                                               |
+| `/purchases`                    | `(detail)`      | `/feed`           | My purchases (Epic 3); tab in `?status=` (`completed`, else scheduled) |
+| `/purchases/[purchaseId]/recap` | `(detail)`      | `/purchases`      | Purchase recap (Epic 3)                                                |
+| `/listings`                     | `(tabs)`        | —                 | My listings (Epic 5)                                                   |
+| `/listings/new`                 | `(tabs)`        | —                 | Create a listing (Epic 4)                                              |
+| `/listings/[listingId]`         | `(tabs)`        | —                 | Seller's listing (Epic 5)                                              |
+| `/login`                        | none (`(auth)`) | —                 | Login (Epic 6)                                                         |
+
+### App shell
+
+Route groups in `src/app/` pick the shell; components live in `src/components/layout/`.
+
+- `(tabs)`: `AppHeader` + `TabNav` (Inicio / Mis artículos). Desktop shows a segmented bar under
+  the header; below `sm` it becomes a bottom bar fixed to the viewport, so `main` gets extra
+  bottom padding there.
+- `(detail)`: `AppHeader isDetail`, which adds a bottom border and a phone-only back link. Its
+  target comes from `getBackHref(pathname)` (`back-href.ts`); add new detail routes there.
+- `(auth)`: no shell.
+
+The nav badges and the avatar initial are **real data, never hardcoded**: `AppHeader` takes
+`scheduledPurchasesCount` and `userInitial`, `TabNav` takes `listingsInProgressCount`. Each is
+optional, and an undefined or zero count shows no badge. The layouts don't pass them yet because
+there are no endpoints. Open questions for the backend: where those two counts come from (a
+dedicated summary endpoint or counts on the list endpoints), and the current-user endpoint for
+the initial.
 
 ## Environment variables
 
@@ -112,7 +143,6 @@ State as of 2026-10-05. Not rewritten up front; fix them in the slice that touch
 - `src/lib/api/server.ts`: `schema` is optional in `ApiFetchOptions` and there is a
   `(data as T)` cast when it's missing, while INV-2 requires a `schema` on every call. Consider
   making it mandatory (or adding an explicit variant for responses without a body).
-- `src/app/page.tsx` exports `Home`; the convention is `HomePage`.
 - `src/app/providers.tsx` types its props inline (`{ children: ReactNode }`) instead of
   `type ProvidersProps`. Acceptable for a single prop; follow the convention in new components.
 - Commit history: `docs: …` and `chore: …` without a scope. Valid because they are repo-wide

@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* `light:` variant for the rare markup that can't be expressed with tokens (e.g. picking the
+   logo file per theme). Tokens already switch on their own; prefer them. */
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+
 /*
  * Design tokens, for both themes. Warm stone neutrals, emerald primary, a serif heading font
  * over a sans-serif body. Palette extracted from the visual reference at

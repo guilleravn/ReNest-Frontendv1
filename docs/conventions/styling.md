@@ -39,6 +39,10 @@ what does exist there.
     screens — every token resolves correctly in both, so default styling already works in both.
 - ✅ Only theme tokens. ❌ raw colors (`text-zinc-400`, `#22c55e`): add the token to
   `globals.css` first.
+- When markup itself must differ per theme (e.g. the logo file in `AppHeader`), use the
+  `light:` variant defined in `globals.css` (`light:hidden`, `light:block`). Tailwind's `dark:`
+  follows the OS setting, not our `data-theme`, so don't use it. Prefer tokens whenever they
+  can express the difference.
 - Class order is enforced by `prettier-plugin-tailwindcss`; run `npm run format`.
 - ❌ `style={{}}` except for truly dynamic values (e.g. a computed CSS var).
 
