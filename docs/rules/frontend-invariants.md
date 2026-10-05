@@ -29,6 +29,19 @@ built.** Add a rule here in the same slice that introduces it.
 - **Fails as:** A build error when a client component imports them (the intended failure). If the
   guard is missing, secrets ship to the browser silently.
 
+## INV-4: Every screen works from 320px to wide desktop
+
+- **Requires:** Layouts are built desktop-first ([styling.md](../conventions/styling.md)) and every
+  page stays usable at any viewport width from **320 CSS px** to wide desktop (1920px and up).
+  The page has no horizontal scroll, text is not clipped or overlapping, and every action and
+  piece of content is reachable, possibly behind a menu or disclosure. The viewport keeps
+  Next's default `width=device-width, initial-scale=1`, and zoom is never disabled.
+- **Protects:** Users on phones, tablets, split-screen and zoomed browsers (WCAG 2.2 1.4.10
+  Reflow, which equals 320px at 400% zoom).
+- **Fails as:** A sideways-scrolling page or controls pushed off-screen on a phone, or a layout
+  that only works at the width it was built at. Typical causes: a fixed `w-[…px]`, a
+  `col-span-*` or `col-start-*` that was not reset, or a missing `min-w-0`.
+
 ## TBD
 
 - Auth/route protection rules (once the login flow exists).

@@ -11,7 +11,7 @@ If the plan needs a backend endpoint that isn't documented in
 
 ## What a slice is
 
-A slice is one complete, working feature, committed on its own:
+A slice is one complete, working feature, committed on its own (**one commit per slice**):
 
 - component(s) and route(s)
 - the backend call(s) (`api.ts` / `actions.ts`)
@@ -19,7 +19,28 @@ A slice is one complete, working feature, committed on its own:
 - tests for the critical path
 - doc updates (architecture route/endpoint tables, stack table if deps changed, invariants)
 
-A slice leaves `lint`, `typecheck`, `format:check` and `test` green.
+A slice leaves `lint`, `typecheck`, `format:check` and `test` green. The `pre-commit` hook
+(`.claude/hooks/pre-commit`, enabled by `npm install` via `core.hooksPath`) checks them.
+
+## Grouping commits
+
+Commits are made by the QA agent right after it approves a work package, without asking for
+approval. Group the changes by **functionality or area**: each commit is one coherent change that
+a one-line message describes (a feature in a module, a refactor, the tests of a module).
+
+Balance the number of commits against their size:
+
+- Not too many: no commit per file or per tiny step (a lone DTO, an import fix).
+- Not too big: an issue that spans several modules or features is split by module/feature.
+- Usually 1–4 commits per work package.
+- Every commit leaves the repo green (the hook checks it) and carries the docs it affects.
+- Tests go with the code they verify; QA's extra tests for a module may go in their own commit.
+
+```
+feat(listings): add status filter to listings query
+refactor(auth): move token parsing into the auth service
+test(listings): add e2e tests for the status filter
+```
 
 ## Commit messages
 
@@ -27,20 +48,23 @@ A slice leaves `lint`, `typecheck`, `format:check` and `test` green.
 scope**:
 
 ```
-feat(auth): add login form with server action
-fix(listings): handle empty results from the backend
-chore(deps): add date-fns
-docs(architecture): document listings endpoints
-test(auth): cover invalid credentials flow
+✅ feat(auth): add login form with server action
+✅ feat(listings): add listing detail page with empty and error states
+✅ fix(listings): handle empty results from the backend
+✅ chore(deps): add date-fns
+✅ docs(architecture): document listings endpoints
+✅ test(auth): cover invalid credentials flow
+❌ Added listings page.        ❌ feat: stuff        ❌ fix(listings): Fixes bug.
 ```
 
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `build`, `ci`.
-Subject in imperative mood, lowercase, no trailing period. The body explains the _why_ when it's
-not obvious.
+- Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `style`, `perf`, `build`, `ci`.
+- Omit the scope only when the change is repo-wide.
+- Subject in imperative mood, lowercase, no trailing period, in English, ≤ 72 characters. The
+  body explains the _why_ when it's not obvious.
 
 ## Rules
 
-1. Show the **full commit message in chat** and wait for approval before committing.
-2. **No AI attribution** in commit messages.
-3. **Never `git push`** unless explicitly asked in that moment.
-4. Never commit `.env.local` or any secret. New env vars go in `.env.example` with a placeholder.
+1. **No AI attribution** in commit messages (no `Co-Authored-By`, no "Generated with" lines).
+2. **Never `git push`** unless explicitly asked in that moment.
+3. Never commit `.env.local` or any secret. New env vars go in `.env.example` with a placeholder
+   and in the zod schema of `src/lib/env.ts`.

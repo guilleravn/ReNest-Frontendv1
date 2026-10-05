@@ -1,5 +1,29 @@
 # Architecture
 
+## Stack
+
+Living section: update it in the same commit that installs or removes a dependency. Versions
+come from `package.json`/`node_modules`, not from memory. Runtime: Node 24, npm.
+
+| Area            | Choice                                                                     | Version        |
+| --------------- | -------------------------------------------------------------------------- | -------------- |
+| Framework       | Next.js (App Router, `src/` dir)                                           | 16.3.8         |
+| UI              | React                                                                      | 19.2.8         |
+| Language        | TypeScript (strict)                                                        | 5.9.3          |
+| Styling         | Tailwind CSS (+ CSS Modules when needed), light/dark tokens (dark default) | 4.3.3          |
+| Client data     | TanStack Query (+ devtools)                                                | 5.104.1        |
+| Validation      | zod (env + API responses)                                                  | 4.6.5          |
+| Server boundary | `server-only`                                                              | 0.0.1          |
+| Unit/component  | Vitest + Testing Library + jsdom                                           | 5.0.3          |
+| E2E             | Playwright (Chromium)                                                      | 1.63.0         |
+| Lint / format   | ESLint (`eslint-config-next`) + Prettier (Tailwind plugin)                 | 9.39.5 / 3.9.9 |
+| Global state    | **None**: deliberately deferred, see components-and-state.md               | —              |
+| Auth library    | **None**: custom JWT-in-httpOnly-cookie flow, see Auth below               | —              |
+
+Next.js 16 has breaking changes vs. older versions (e.g. `middleware.ts` is now `proxy.ts`,
+`cookies()`/`headers()` are async). Check `node_modules/next/dist/docs/` before writing
+framework code.
+
 ## Connection to ReNest-Backend
 
 ```
@@ -13,6 +37,11 @@ Browser ──(cookies)──► Next.js server (:3001) ──(Authorization: Be
 - **Client:** `apiFetch` in [src/lib/api/server.ts](../src/lib/api/server.ts). It runs only on the
   server, sends JSON, attaches the Bearer token, throws `ApiError` (status + body) on non-2xx, and
   validates responses with zod.
+- **Running a real backend locally:** `npm run dev` alone has nothing on `:3000`. For a real
+  backend (needed for e2e tests that exercise actual flows, not mocks), go to `../ReNest-Backend`
+  and run `npm run docker:up` — it builds and starts Postgres + the API in Docker on `:3000`. Stop
+  it with `npm run docker:down`. See that repo's
+  `docs/architecture.md#running-the-api-in-docker`.
 
 ### Auth (planned design, not implemented yet)
 
@@ -75,3 +104,16 @@ add new ones to its zod schema.
 - `npm audit` reports 5 high-severity advisories in `braces`, pulled in through
   `eslint-config-next` (dev/lint only, not shipped to users). `npm audit fix --force` would
   downgrade to `eslint-config-next@14`, so it's left as is until upstream updates.
+
+## Known deviations from the conventions
+
+State as of 2026-10-05. Not rewritten up front; fix them in the slice that touches that code.
+
+- `src/lib/api/server.ts`: `schema` is optional in `ApiFetchOptions` and there is a
+  `(data as T)` cast when it's missing, while INV-2 requires a `schema` on every call. Consider
+  making it mandatory (or adding an explicit variant for responses without a body).
+- `src/app/page.tsx` exports `Home`; the convention is `HomePage`.
+- `src/app/providers.tsx` types its props inline (`{ children: ReactNode }`) instead of
+  `type ProvidersProps`. Acceptable for a single prop; follow the convention in new components.
+- Commit history: `docs: …` and `chore: …` without a scope. Valid because they are repo-wide
+  changes; feature commits do carry a scope.
