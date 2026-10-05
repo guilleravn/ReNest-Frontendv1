@@ -12,4 +12,5 @@ npm run dev                  # http://localhost:3001
 
 ReNest-Backend is expected on `http://localhost:3000`.
 
-See [CLAUDE.md](CLAUDE.md) for commands and conventions, and [docs/](docs/) for details.
+See [CLAUDE.md](CLAUDE.md) for commands and process rules, and [docs/README.md](docs/README.md)
+for the index of architecture and convention docs.

@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "prepare": "git config core.hooksPath .claude/hooks || true"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",
