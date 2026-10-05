@@ -1,0 +1,6 @@
+# Prettier enforces LF; keep LF in the working copy on every OS.
+* text=auto eol=lf
+*.ico binary
+*.png binary
+*.jpg binary
+*.woff2 binary
