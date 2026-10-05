@@ -42,7 +42,7 @@ _None agreed yet._ Format when adding:
 ## Providers and layouts
 
 ```
-src/app/layout.tsx            Server Component: <html>, fonts (Geist), globals.css, metadata
+src/app/layout.tsx            Server Component: <html lang="es">, fonts, globals.css, metadata
 └─ <Providers>                src/app/providers.tsx ("use client")
    └─ QueryClientProvider     TanStack Query; client from src/lib/query-client.ts
       ├─ {children}           Route pages
@@ -52,11 +52,38 @@ src/app/layout.tsx            Server Component: <html>, fonts (Geist), globals.c
 `getQueryClient()` creates a new `QueryClient` per request on the server and reuses a single one
 in the browser.
 
+### App shell (route groups)
+
+Route groups (`(…)` folders) don't appear in the URL; they choose which shell a page gets.
+
+```
+src/app/
+  page.tsx                 / → redirect to /feed
+  (tabs)/layout.tsx        Top-level sections: AppHeader + DesktopTabNav (sm+) + MobileTabNav (bottom, <sm)
+    feed/                  /feed
+    listings/              /listings
+  (main)/layout.tsx        Secondary pages: AppHeader bordered + mobile "Volver" link, no tabs
+    purchases/             /purchases
+```
+
+- Shell components live in `src/components/layout/`. Only `tab-nav.tsx` is a Client Component
+  (it reads `usePathname()` to mark the active tab).
+- New top-level section reachable from the tabs → add it under `(tabs)/` and to the tab list in
+  `tab-nav.tsx`. Any other page → `(main)/` (or a new group if it needs a different shell).
+- Each route owns its folder: work on a page stays inside `src/app/(group)/<route>/` and its
+  feature folder, so teammates can build different routes in parallel without touching the shell.
+- Badge counts ("Mis compras", "Mis artículos") are optional props that default to 0, and a
+  badge only renders when its count is positive. Nothing is hardcoded: until the backend exposes
+  the counts, no badges show. The avatar shows a generic user icon until auth exists.
+
 ## Routes
 
-| Route | File               | Type             | Auth | Description              |
-| ----- | ------------------ | ---------------- | ---- | ------------------------ |
-| `/`   | `src/app/page.tsx` | Server Component | No   | Placeholder landing page |
+| Route        | File                                | Type             | Auth | Description                                                                      |
+| ------------ | ----------------------------------- | ---------------- | ---- | -------------------------------------------------------------------------------- |
+| `/`          | `src/app/page.tsx`                  | Server Component | No   | Redirects to `/feed`                                                             |
+| `/feed`      | `src/app/(tabs)/feed/page.tsx`      | Server Component | TBD  | Home feed. Placeholder (empty)                                                   |
+| `/listings`  | `src/app/(tabs)/listings/page.tsx`  | Server Component | TBD  | "Mis artículos". Placeholder (empty)                                             |
+| `/purchases` | `src/app/(main)/purchases/page.tsx` | Server Component | TBD  | "Mis compras": title + Agendadas/Completadas tabs (`?tab=completadas`); list TBD |
 
 ## Environment variables
 

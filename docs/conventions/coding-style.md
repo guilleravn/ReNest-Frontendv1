@@ -12,14 +12,19 @@ src/
     actions.ts          #   Server Actions ("use server") for mutations
     schemas.ts          #   zod schemas + inferred types for this feature's API data
     *.test.ts(x)        #   tests colocated with the code
-  components/ui/        # Shared, feature-agnostic UI primitives (Button, Input, ...)
-  lib/                  # Infrastructure: env, API client, query client
+  components/ui/        # Shared, feature-agnostic UI primitives (SegmentedTabs, Button, ...)
+  components/layout/    # App shell: header, tab navigation, shared badges/icons
+  lib/                  # Infrastructure: env, API client, query client, cn()
   test/                 # Vitest setup
 e2e/                    # Playwright specs
 ```
 
 A feature may import from `lib/` and `components/ui/`, but not from another feature's
 internals. If two features need the same thing, promote it to `components/ui/` or `lib/`.
+
+File names are kebab-case (`app-header.tsx`); components are PascalCase named exports
+(`export function AppHeader`). Only Next.js file conventions (`page.tsx`, `layout.tsx`) use
+default exports.
 
 ## Server Component / Client Component boundary
 
@@ -85,13 +90,31 @@ that uses it. If ReNest-Backend later exposes OpenAPI, switch to generated types
 
 - **Tailwind first** for all styling. Use **CSS Modules** (`Component.module.css`) only for things
   Tailwind expresses poorly (complex animations, keyframes, third-party overrides).
-- **Dark-only theme.** Design tokens are CSS variables in
-  [src/app/globals.css](../../src/app/globals.css) (`--background`, `--foreground`, `--surface`,
-  `--muted`, `--border`, `--accent`), exposed to Tailwind via `@theme inline` (`bg-background`,
-  `text-muted`, `border-border`, ...).
-- Use token classes, not raw colors (`text-muted`, not `text-zinc-400`). Add a new token to
-  `globals.css` before using a new color.
-- Class order is enforced by `prettier-plugin-tailwindcss`; run `npm run format`.
+- **Dark-only theme.** Design tokens are ported from the ReNest mockups and live as CSS variables
+  in [src/app/globals.css](../../src/app/globals.css), exposed to Tailwind via `@theme inline`:
+  - Raw palette: `--bg`, `--surface`, `--surface-sunken`, `--border`, `--text`, `--text-muted`,
+    `--green-*`, `--blue-*`, `--amber-*`, status colors (`--success`, `--error`, `--verified`,
+    ...), `--price`, `--focus`.
+  - Semantic aliases with shadcn/ui names: `--background`, `--foreground`, `--primary`,
+    `--secondary`, `--muted`, `--accent`, `--destructive`, `--ring`, ...
+  - Classes: `bg-background`, `bg-surface`, `text-text-muted`, `bg-green-strong`,
+    `border-border`, `outline-ring`, `shadow-[var(--shadow-card)]`, ...
+  - To add a light theme later, override the raw palette under a selector; components don't
+    change.
+- Use token classes, not raw Tailwind colors (`text-text-muted`, not `text-stone-400`). Add a new
+  token to `globals.css` before using a new color.
+- **Fonts:** Urbanist is the default (`font-sans`), Diphylleia for headings (`font-heading`, applied
+  to `h2`–`h4` by a base style in `globals.css`, as in the mockups),
+  JetBrains Mono for code/numbers (`font-mono`).
+- **Icons:** `lucide-react`. Custom SVG icons not in lucide go in
+  `src/components/layout/icons.tsx` (or the feature's `components/`).
+- Conditional classes: `cn()` from `@/lib/cn`.
+- In-page tab switchers (Agendadas/Completadas, En proceso/Activos/...) use `SegmentedTabs` from
+  `@/components/ui/segmented-tabs`, with the active tab in the URL (`?tab=...`), not in state.
+- Never render made-up data in the UI. Counts, names and badges come from the backend; without
+  data, render nothing (or an empty state), not a hardcoded value.
+- Class order is enforced by `prettier-plugin-tailwindcss` (configured with
+  `tailwindStylesheet` so it knows our custom tokens); run `npm run format`.
 
 ## TypeScript
 

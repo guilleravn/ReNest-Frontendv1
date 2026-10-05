@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("home page loads", async ({ page }) => {
+test("root redirects to the feed", async ({ page }) => {
   await page.goto("/");
 
+  await expect(page).toHaveURL(/\/feed$/);
   await expect(page).toHaveTitle("ReNest");
-  await expect(page.getByRole("heading", { level: 1, name: "ReNest" })).toBeVisible();
 });

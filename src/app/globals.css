@@ -1,32 +1,146 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. The app ships a single dark theme; tokens live here as CSS variables
- * so a light theme can be added later by overriding them under a selector.
+ * Design tokens, ported from the ReNest mockups (dark palette only).
+ * The app ships a single dark theme. Token names match the mockups so a light theme can be
+ * added later by overriding the raw tokens under a selector, without touching components.
  */
 :root {
   color-scheme: dark;
 
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --surface: #171717;
-  --muted: #a1a1aa;
-  --border: #27272a;
-  --accent: #22c55e;
+  /* Raw palette */
+  --bg: #1c1917;
+  --surface: #292524;
+  --surface-sunken: #1c1917;
+  --border: #44403c;
+  --border-strong: #57534e;
+  --text: #fafaf9;
+  --text-muted: #a8a29e;
+  --text-subtle: #78716c;
+  --text-inverse: #1c1917;
+  --green: #34d399;
+  --green-strong: #10b981;
+  --green-hover: #059669;
+  --green-active: #047857;
+  --green-surface: #052e24;
+  --blue: #60a5fa;
+  --blue-strong: #3b82f6;
+  --blue-surface: #10233f;
+  --amber: #fbbf24;
+  --amber-strong: #fbbf24;
+  --amber-surface: #2a1f08;
+  --success: #34d399;
+  --success-surface: #052e24;
+  --warning: #fbbf24;
+  --warning-surface: #2a1f08;
+  --error: #f87171;
+  --error-surface: #2c1414;
+  --info: #60a5fa;
+  --info-surface: #10233f;
+  --verified: #34d399;
+  --verified-surface: #052e24;
+  --protected: #60a5fa;
+  --protected-surface: #10233f;
+  --price: #fafaf9;
+  --price-reduced: #fbbf24;
+  --focus: #34d399;
+
+  --radius: 0.75rem;
+  --shadow-card: 0 1px 2px 0 #1c19170f;
+  --shadow-menu: 0 4px 12px -2px #1c19171a;
+  --shadow-sheet: 0 12px 32px -8px #1c191724;
+
+  /* Semantic aliases (shadcn/ui naming) */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--bg);
+  --card-foreground: var(--text);
+  --primary: var(--green-strong);
+  --primary-foreground: #1c1917;
+  --secondary: var(--surface-sunken);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--amber-surface);
+  --accent-foreground: var(--text);
+  --destructive: var(--error);
+  --input: var(--border-strong);
+  --ring: var(--focus);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
-  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-inverse: var(--text-inverse);
+  --color-green: var(--green);
+  --color-green-strong: var(--green-strong);
+  --color-green-hover: var(--green-hover);
+  --color-green-active: var(--green-active);
+  --color-green-surface: var(--green-surface);
+  --color-blue: var(--blue);
+  --color-blue-strong: var(--blue-strong);
+  --color-blue-surface: var(--blue-surface);
+  --color-amber: var(--amber);
+  --color-amber-strong: var(--amber-strong);
+  --color-amber-surface: var(--amber-surface);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-error: var(--error);
+  --color-error-surface: var(--error-surface);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+  --color-verified: var(--verified);
+  --color-verified-surface: var(--verified-surface);
+  --color-protected: var(--protected);
+  --color-protected-surface: var(--protected-surface);
+  --color-price: var(--price);
+  --color-price-reduced: var(--price-reduced);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-sans: var(--font-urbanist), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-diphylleia), "Playfair Display", Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg);
+  color: var(--text);
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    letter-spacing: -0.013em;
+  }
 }

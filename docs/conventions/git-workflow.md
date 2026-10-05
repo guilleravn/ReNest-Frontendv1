@@ -9,6 +9,22 @@ for approval before writing code. Trivial changes (typos, a one-line fix) can sk
 If the plan needs a backend endpoint that isn't documented in
 [architecture.md](../architecture.md), the plan must ask for the contract instead of assuming it.
 
+## Branches
+
+- `main`: released code. Never commit to it directly.
+- `develop`: integration branch and the base for all work (the remote's default branch).
+- One branch per slice, created from an up-to-date `develop`, named `<type>/<scope>` with the
+  same type and scope as its commits: `feat/app-shell`, `fix/listings-empty-state`,
+  `chore/deps-date-fns`.
+
+```bash
+git checkout develop && git pull
+git checkout -b feat/<scope>
+```
+
+Slice branches merge back into `develop` through a pull request. Pushing the branch and opening
+the PR only happen when explicitly asked.
+
 ## What a slice is
 
 A slice is one complete, working feature, committed on its own:

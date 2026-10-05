@@ -7,6 +7,8 @@
 English for everything written in the repo: code, comments, docs, commit messages. (The
 maintainer may talk to you in Spanish; answer in Spanish, write the repo in English.)
 
+Exception: **user-facing UI copy is Spanish** (`<html lang="es">`), matching the mockups.
+
 ## What this is
 
 The web frontend of ReNest, a Next.js App Router app. It consumes **ReNest-Backend**, our own
@@ -22,20 +24,22 @@ or response shapes. When a feature needs one, ask for it, then record it in
 Living section: update it in the same commit that installs or removes a dependency. Versions
 come from `package.json`/`node_modules`, not from memory.
 
-| Area            | Choice                                                           | Version        |
-| --------------- | ---------------------------------------------------------------- | -------------- |
-| Framework       | Next.js (App Router, `src/` dir)                                 | 16.3.8         |
-| UI              | React                                                            | 19.2.8         |
-| Language        | TypeScript (strict)                                              | 5.9.3          |
-| Styling         | Tailwind CSS (+ CSS Modules when needed), dark-only theme tokens | 4.3.3          |
-| Client data     | TanStack Query (+ devtools)                                      | 5.104.1        |
-| Validation      | zod (env + API responses)                                        | 4.6.5          |
-| Server boundary | `server-only`                                                    | 0.0.1          |
-| Unit/component  | Vitest + Testing Library + jsdom                                 | 5.0.3          |
-| E2E             | Playwright (Chromium)                                            | 1.63.0         |
-| Lint / format   | ESLint (`eslint-config-next`) + Prettier (Tailwind plugin)       | 9.39.5 / 3.9.9 |
-| Global state    | **None**: deliberately deferred, see coding-style.md             | —              |
-| Auth library    | **None**: custom JWT-in-httpOnly-cookie flow, see architecture   | —              |
+| Area            | Choice                                                                  | Version        |
+| --------------- | ----------------------------------------------------------------------- | -------------- |
+| Framework       | Next.js (App Router, `src/` dir)                                        | 16.3.8         |
+| UI              | React                                                                   | 19.2.8         |
+| Language        | TypeScript (strict)                                                     | 5.9.3          |
+| Styling         | Tailwind CSS (+ CSS Modules when needed), dark-only theme tokens        | 4.3.3          |
+| Icons           | lucide-react                                                            | 1.52.0         |
+| Fonts           | Urbanist (body), Diphylleia (headings), JetBrains Mono, via `next/font` | —              |
+| Client data     | TanStack Query (+ devtools)                                             | 5.104.1        |
+| Validation      | zod (env + API responses)                                               | 4.6.5          |
+| Server boundary | `server-only`                                                           | 0.0.1          |
+| Unit/component  | Vitest + Testing Library + jsdom                                        | 5.0.3          |
+| E2E             | Playwright (Chromium)                                                   | 1.63.0         |
+| Lint / format   | ESLint (`eslint-config-next`) + Prettier (Tailwind plugin)              | 9.39.5 / 3.9.9 |
+| Global state    | **None**: deliberately deferred, see coding-style.md                    | —              |
+| Auth library    | **None**: custom JWT-in-httpOnly-cookie flow, see architecture          | —              |
 
 Runtime: Node 24, npm.
 

@@ -1,28 +1,37 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Diphylleia, JetBrains_Mono, Urbanist } from "next/font/google";
 
 import { Providers } from "./providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const urbanist = Urbanist({
+  variable: "--font-urbanist",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const diphylleia = Diphylleia({
+  variable: "--font-diphylleia",
+  weight: "400",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "ReNest",
-  description: "ReNest web app",
+  description: "De segunda mano, sin preocupaciones",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
+    <html
+      lang="es"
+      className={`${urbanist.variable} ${diphylleia.variable} ${jetbrainsMono.variable} h-full font-sans antialiased`}
+    >
+      <body className="min-h-full">
         <Providers>{children}</Providers>
       </body>
     </html>
