@@ -37,11 +37,22 @@ Browser ──(cookies)──► Next.js server (:3001) ──(Authorization: Be
 - **Client:** `apiFetch` in [src/lib/api/server.ts](../src/lib/api/server.ts). It runs only on the
   server, sends JSON, attaches the Bearer token, throws `ApiError` (status + body) on non-2xx, and
   validates every response with its required zod `schema`. A 401 on an authenticated call
-  redirects to `/api/auth/expired` (see Auth); that `redirect()` throws, so callers that wrap
-  `apiFetch` in `try/catch` must re-throw it with `unstable_rethrow`. Route Handlers serving
-  client queries will need to answer a 401 themselves instead (pass `onUnauthorized: "throw"`).
+  redirects to `/api/auth/expired?next=<current page>` (see Auth); that `redirect()` throws, so
+  callers that wrap `apiFetch` in `try/catch` must re-throw it with `unstable_rethrow`. Route
+  Handlers serving client queries will need to answer a 401 themselves instead (pass
+  `onUnauthorized: "throw"`). It also forwards the user's IP (see "Client IP").
 - **Errors:** Nest's standard body, `{ statusCode, message, error }` (`message` is a `string[]`
   for validation errors). The UI never shows it: actions map statuses to Spanish copy.
+- **Client IP:** the backend rate-limits per IP and trusts `X-Forwarded-For` from this server, so
+  `apiFetch` sends the end user's IP as a single-value `X-Forwarded-For` on every call.
+  `getClientIp()` ([src/lib/api/client-ip.ts](../src/lib/api/client-ip.ts)) takes the
+  **rightmost** entry of the incoming `X-Forwarded-For` (the address added by the closest hop)
+  and drops anything that isn't a bare IP. **Deployment assumption:** Next runs behind exactly one
+  trusted proxy that sets or appends `X-Forwarded-For` (Vercel, or nginx/a load balancer with
+  `$proxy_add_x_forwarded_for`) and is not reachable directly. Self-hosted Next only fills the
+  header in when it's **missing** (with the socket address; `next/dist/server/base-server.js`),
+  so a client talking to Next directly could choose its own IP. With more than one proxy hop,
+  revisit the rule. In local development the header is the loopback address.
 - **Running a real backend locally:** `npm run dev` alone has nothing on `:3000`. For a real
   backend (needed for e2e tests that exercise actual flows, not mocks), go to `../ReNest-Backend`
   and run `npm run docker:up` — it builds and starts Postgres + the API in Docker on `:3000`. Stop
@@ -68,11 +79,28 @@ never exposes that token to browser JS:
 2. **Session:** [src/lib/auth/session.ts](../src/lib/auth/session.ts) is the only entry point.
    `getSession()` (memoized per request with React `cache()`) returns the user from
    `GET /auth/me`, or `null` with no cookie (no backend call) or on a 401. `requireSession()`,
-   used by the `(tabs)` and `(detail)` layouts, redirects to `/api/auth/expired` when it's
-   `null`.
+   used by the `(tabs)` and `(detail)` layouts, redirects to `/api/auth/expired?next=<page>`
+   when it's `null`. Layouts don't re-render on client navigation within their group, so a page
+   that loads private data calls `requireSession()` itself (or relies on `apiFetch`'s 401
+   redirect); the backend authorizes every call anyway (INV-5).
 3. **Authenticated calls:** `apiFetch` reads the cookie only to add the Bearer header.
 4. **Expired or rejected token:** Server Components can't delete cookies, so they redirect to the
-   Route Handler `GET /api/auth/expired`, which clears the cookie and redirects to `/login`.
+   Route Handler `GET /api/auth/expired?next=<page>`. The page comes from the
+   `x-renest-page-path` request header, which `src/proxy.ts` sets on every page request (always
+   overwriting a client value, and without Next's `_rsc` parameter): Server Components have no
+   other reliable way to read the current URL. The handler re-checks the token with
+   `GET /auth/me` and **only clears a cookie the backend rejects (401)**, then redirects to
+   `/login?next=<page>`. A valid session is left alone and continues to `next`, so a link from
+   another site can't sign anyone out (logout CSRF); if the backend is unreachable it also keeps
+   the cookie and continues to `next`, where the error boundary explains. `Origin`/
+   `Sec-Fetch-Site` checks were rejected: a legitimate chain that starts on another site (a link
+   from an email to a protected page) is cross-site too, and refusing to clear there would loop
+   between `/login` and the page. `next` is always validated with `safeRedirectPath()`, which
+   rejects anything that resolves under `/api` (dot segments and `%2e` included).
+   **Residual risk:** the handler trusts `GET /auth/me` alone. If another endpoint answered 401
+   for a token that `/auth/me` still accepts (e.g. inconsistent guards), `apiFetch` would
+   redirect page → expired → page (cookie kept) in a loop. Keep the backend's token check the
+   same on every endpoint; if that ever can't hold, add a loop guard (e.g. a one-shot marker).
 5. **Logout:** `logoutAction` (account menu in the header) deletes the cookie and redirects to
    `/login`. There is no backend logout endpoint (tokens are not revoked in the MVP).
 6. **Route protection:** [src/proxy.ts](../src/proxy.ts) (Next 16's replacement for
@@ -95,21 +123,29 @@ message in local state.
 
 ### Endpoints
 
-| Method | Path             | Auth   | Request                                                                                                  | Response schema (frontend)                                                 | Used by                                |
-| ------ | ---------------- | ------ | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------- |
-| POST   | `/auth/login`    | Public | `{ email, password }`                                                                                    | `authTokenSchema` `{ accessToken, expiresAt }`                             | `loginAction`                          |
-| POST   | `/auth/register` | Public | `{ fullName, email, city, phoneE164: string \| null, password, acceptedTerms: true }` (`registerSchema`) | `authTokenSchema` (signs the user in)                                      | `registerAction`                       |
-| GET    | `/auth/me`       | Bearer | —                                                                                                        | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }` | `getSession()` (layouts, account menu) |
+| Method | Path             | Auth   | Request                                                                             | Response schema (frontend)                                                 | Used by                                |
+| ------ | ---------------- | ------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------- |
+| POST   | `/auth/login`    | Public | `{ email, password }`                                                               | `authTokenSchema` `{ accessToken, expiresAt }`                             | `loginAction`                          |
+| POST   | `/auth/register` | Public | `{ fullName, email, city, phoneE164: string \| null, password }` (`registerSchema`) | `authTokenSchema` (signs the user in)                                      | `registerAction`                       |
+| GET    | `/auth/me`       | Bearer | —                                                                                   | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }` | `getSession()` (layouts, account menu) |
+| GET    | `/zones`         | Public | —                                                                                   | `zonesSchema` (non-empty `string[]`)                                       | `/register` page (zone options)        |
 
-Statuses the UI handles (everything else → "No pudimos conectar con ReNest. Intenta de nuevo."):
+Statuses the UI handles: any other 4xx (e.g. a 400) → "Revisa los datos e intenta de nuevo."; 5xx
+or an unreachable backend → "No pudimos conectar con ReNest. Intenta de nuevo.".
 
 - `POST /auth/login`: 401 for an unknown email **and** a wrong password (same message, "Correo o
   contraseña incorrectos"); 429 rate limit.
-- `POST /auth/register`: 409 email already registered (shown on the email field); 429.
+- `POST /auth/register`: 409 email already registered (shown on the email field); 429; a 400
+  whose validation message starts with `city` (a zone the backend no longer offers) is shown on
+  the zone field ("Elige tu zona para coordinar recogidas"). Sending `acceptedTerms` is a 400:
+  there is no terms checkbox.
+- `GET /zones`: the zone list, also the `<select>` labels; the backend is its single source of
+  truth and validates `city` against it. Fetched by the `/register` page with no caching (one
+  small request per visit; a cached copy could offer a zone the backend dropped). A failure or
+  an empty list throws to `src/app/error.tsx`, never an empty select.
 - `GET /auth/me`: 401 → signed out. Any other failure is thrown to `src/app/error.tsx` (see
   "Error boundary"). `id` is a UUID (UUIDv7 on the backend).
-- `expiresAt` is ISO 8601 UTC. `city` is one of `USER_ZONES` (`features/auth/schemas.ts`, exact
-  strings, also the `<select>` labels). The backend strips spaces, hyphens, dots and parentheses
+- `expiresAt` is ISO 8601 UTC. The backend strips spaces, hyphens, dots and parentheses
   from the phone and then requires `^\+[1-9]\d{7,14}$`; `registerSchema` does the same, and sends
   an empty phone as `null`.
 
@@ -156,7 +192,7 @@ by `src/proxy.ts`, and by `requireSession()` in the `(tabs)`/`(detail)` layouts)
 | `/listings/[listingId]`         | `(tabs)`      | Yes    | —                 | Seller's listing (Epic 5)                                              |
 | `/login`                        | `(auth)`      | Public | —                 | Login (A9); `?next=` = where to go after signing in                    |
 | `/register`                     | `(auth)`      | Public | —                 | Sign-up (A9); always lands on `/feed`                                  |
-| `/api/auth/expired`             | Route Handler | —      | —                 | Clears a stale session cookie, redirects to `/login`                   |
+| `/api/auth/expired`             | Route Handler | —      | —                 | Clears a cookie the backend rejects, back to `/login?next=`            |
 
 ### App shell
 

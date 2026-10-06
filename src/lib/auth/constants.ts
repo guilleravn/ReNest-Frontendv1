@@ -14,3 +14,10 @@ export const DEFAULT_SIGNED_IN_PATH = "/feed";
  * Server Components can't delete cookies, so they redirect here instead.
  */
 export const EXPIRED_SESSION_PATH = "/api/auth/expired";
+
+/**
+ * Request header that `src/proxy.ts` sets (always overwriting any client value) to the
+ * requested page's `path + search`. Server Components can't read the URL otherwise, and the
+ * expired-session redirect needs it to bring the user back after signing in again.
+ */
+export const PAGE_PATH_HEADER = "x-renest-page-path";

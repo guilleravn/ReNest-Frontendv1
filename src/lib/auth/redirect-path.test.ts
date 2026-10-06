@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isSafeRedirectPath, safeRedirectPath } from "./redirect-path";
+import { isSafeRedirectPath, safeRedirectPath, withNextParam } from "./redirect-path";
 
 describe("safeRedirectPath", () => {
   it.each(["/feed", "/items/i1", "/purchases?status=completed", "/listings/l1#photos"])(
@@ -51,4 +51,43 @@ describe("isSafeRedirectPath", () => {
     expect(isSafeRedirectPath("/listings")).toBe(true);
     expect(isSafeRedirectPath("//listings")).toBe(false);
   });
+});
+
+describe("safeRedirectPath and /api", () => {
+  it.each([
+    "/api",
+    "/api/auth/expired",
+    "/api/auth/expired?next=%2Ffeed",
+    "/API/zones",
+    "/api?x=1",
+  ])("falls back to the feed for the Route Handler path %s", (path) => {
+    expect(safeRedirectPath(path)).toBe("/feed");
+  });
+
+  it.each(["/./api/auth/expired", "/feed/../api/auth/expired", "/%2e/api/auth/expired"])(
+    "falls back to the feed for %s, which the browser resolves under /api",
+    (path) => {
+      expect(new URL(path, "https://renest.app").pathname.startsWith("/api/")).toBe(true);
+      expect(safeRedirectPath(path)).toBe("/feed");
+    },
+  );
+
+  it.each(["/apiary", "/listings/api"])("keeps %s, which is not under /api", (path) => {
+    expect(safeRedirectPath(path)).toBe(path);
+  });
+});
+
+describe("withNextParam", () => {
+  it("appends a safe next", () => {
+    expect(withNextParam("/login", "/purchases?status=completed")).toBe(
+      "/login?next=%2Fpurchases%3Fstatus%3Dcompleted",
+    );
+  });
+
+  it.each([null, undefined, "/", "//evil.com", "/api/auth/expired"])(
+    "leaves the path alone for %j",
+    (next) => {
+      expect(withNextParam("/login", next)).toBe("/login");
+    },
+  );
 });

@@ -1,18 +1,32 @@
 import { DEFAULT_SIGNED_IN_PATH, LOGIN_PATH } from "./constants";
+import { withNextParam } from "./redirect-path";
 
 /** Routes reachable without a session. Everything else requires one. */
 export const PUBLIC_PATHS = ["/login", "/register"] as const;
 
+/** Query parameter Next adds to client-navigation (RSC) requests; never part of a page URL. */
+const RSC_SEARCH_PARAM = "_rsc";
+
 type RouteAccessInput = {
-  pathname: string;
-  /** The query string, including its leading `?`, or `""`. */
-  search: string;
+  /** The requested page as `path + search` (see `getPagePath`). */
+  pagePath: string;
   /** Whether the request carries the session cookie (presence only, not validity). */
   hasSessionCookie: boolean;
 };
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+}
+
+/**
+ * The page a request is for, as `path + search`, without Next's internal `_rsc` parameter. It's
+ * what a `next` parameter should point back to.
+ */
+export function getPagePath(url: { pathname: string; search: string }): string {
+  const searchParams = new URLSearchParams(url.search);
+  searchParams.delete(RSC_SEARCH_PARAM);
+  const search = searchParams.toString();
+  return search ? `${url.pathname}?${search}` : url.pathname;
 }
 
 /**
@@ -23,17 +37,11 @@ function isPublicPath(pathname: string): boolean {
  * - No cookie on a protected route → `/login?next=<path+search>`.
  * - Cookie on `/login` or `/register` → the feed.
  */
-export function getRouteRedirect({
-  pathname,
-  search,
-  hasSessionCookie,
-}: RouteAccessInput): string | null {
-  const isPublic = isPublicPath(pathname);
+export function getRouteRedirect({ pagePath, hasSessionCookie }: RouteAccessInput): string | null {
+  const pathname = pagePath.split(/[?#]/, 1)[0] ?? pagePath;
 
-  if (isPublic) return hasSessionCookie ? DEFAULT_SIGNED_IN_PATH : null;
+  if (isPublicPath(pathname)) return hasSessionCookie ? DEFAULT_SIGNED_IN_PATH : null;
   if (hasSessionCookie) return null;
 
-  // `/` only forwards to the feed, so it isn't worth carrying as `next`.
-  if (pathname === "/") return LOGIN_PATH;
-  return `${LOGIN_PATH}?${new URLSearchParams({ next: `${pathname}${search}` })}`;
+  return withNextParam(LOGIN_PATH, pagePath);
 }

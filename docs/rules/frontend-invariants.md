@@ -47,18 +47,23 @@ built.** Add a rule here in the same slice that introduces it.
 - **Requires:** Every route except `/login` and `/register` requires a session. `src/proxy.ts`
   redirects by the `renest_token` cookie's **presence** only (no backend call, no token
   decoding): it's a UX shortcut, never the authorization. The backend authorizes every request,
-  and a rejected token sends the user through `/api/auth/expired` (clears the cookie) to
-  `/login`. Pages, layouts and actions read the session **only** through
+  and a rejected token sends the user through `/api/auth/expired?next=<page>` (clears the
+  cookie only if the backend rejects it, so a cross-site link can't sign anyone out) to
+  `/login?next=<page>`. Pages, layouts and actions read the session **only** through
   [src/lib/auth/session.ts](../../src/lib/auth/session.ts) (`getSession()`/`requireSession()`),
   which is also the only module that writes or deletes the cookie; `apiFetch` reads it only to
   attach the Bearer header. A `next` redirect target is always re-validated on the server with
-  `safeRedirectPath()` (internal paths only).
+  `safeRedirectPath()` (internal page paths only, never `/api/*`). Layouts don't re-render on
+  client navigation within their group, so a **page that loads private data calls
+  `requireSession()` itself** (or relies on `apiFetch`'s 401 redirect), instead of trusting
+  its layout's check.
 - **Protects:** User data and actions (the backend stays the single authority even if the proxy
   matcher changes or a Server Action is called directly), against open redirects through
   `next`, and the swap to another auth provider (one module changes).
 - **Fails as:** A page that trusts the proxy and renders private data without the backend
   checking the token; a component or feature reading `cookies().get("renest_token")` itself;
-  a redirect to `//evil.com` after login; a stale cookie that loops between `/login` and `/feed`.
+  a redirect to `//evil.com` after login; a stale cookie that loops between `/login` and `/feed`;
+  private data rendered after a client navigation because only the layout checked the session.
 
 ## TBD
 

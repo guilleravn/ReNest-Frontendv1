@@ -1,13 +1,13 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { cache } from "react";
 
 import { getCurrentUser } from "@/features/auth/api";
 import type { SessionUser } from "@/features/auth/schemas";
 import { ApiError } from "@/lib/api/errors";
 
-import { AUTH_COOKIE, EXPIRED_SESSION_PATH } from "./constants";
+import { AUTH_COOKIE } from "./constants";
+import { redirectToExpiredSession } from "./expired-session";
 
 /**
  * The single server-side entry point to the session (INV-5). Pages, layouts and actions read
@@ -36,11 +36,15 @@ export const getSession = cache(async (): Promise<SessionUser | null> => {
 /**
  * The signed-in user for protected layouts and pages. Without a valid session it redirects to
  * the expired-session handler, which clears the stale cookie (Server Components can't) and
- * then sends the user to login.
+ * then sends the user to login, with the current page as `next`.
+ *
+ * Layouts don't re-render on client navigation within their group, so a page that loads
+ * private data calls this itself (or relies on `apiFetch`'s 401 redirect) instead of trusting
+ * its layout's check (INV-5).
  */
 export async function requireSession(): Promise<SessionUser> {
   const user = await getSession();
-  if (!user) redirect(EXPIRED_SESSION_PATH);
+  if (!user) return redirectToExpiredSession();
   return user;
 }
 

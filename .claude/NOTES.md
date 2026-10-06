@@ -13,6 +13,77 @@ Format:
 
 ---
 
+## 2026-10-06 · BO-39 (QA changes requested) · frontend-issue-implementer
+
+- `isSafeRedirectPath` checks `/api` on the WHATWG-resolved pathname (and its percent-decoded
+  form), so `/./api`, `/feed/../api` and `/%2e/api` are rejected. It still **returns the
+  original path**, not the normalized one: `/..//evil.com` resolves on our host as given, but
+  its normalized form `//evil.com` would be protocol-relative (another host).
+- E2E accounts: `e2e/fixtures.ts` adds a worker-scoped `workerAccount` (signed up once through
+  the UI; `storageState` saved under the project's output dir without the flash cookie) and
+  `signedInTest`. Moved to it: all of `app-shell.spec.ts`, and in auth/auth-session the reload,
+  logout, cookie-removal, client-navigation, expired-handler CSRF and account-menu tests; the
+  duplicate-email test reuses the worker account's email. Login tests still sign up their own
+  fresh account, because logging in repeatedly as the shared email within one worker would hit
+  the per-IP+email limit (5 / 60 s). The fixture's callback is named `provide` because
+  `react-hooks/rules-of-hooks` flags a function called `use`.
+- QA's "never sends the password back" test failed deterministically against a production
+  build (`next start`): after the action response, Next prefetches the page's links and
+  Chromium discards the earlier POST body, so `response.text()` read later throws. The helper
+  now reads the body as soon as the response arrives; the assertion is unchanged. There is no
+  navigation (checked).
+- Targeted run against `next start -p 3002` + a contract mock on :3999 (nothing on :3000): 62
+  tests passed in desktop and mobile after that fix. Excluded: tests that hardcode
+  `localhost:3001` cookie URLs or call :3000 directly, and the rate-limit test.
+
+## 2026-10-06 · BO-39 (A9 review fixes) · frontend-qa-reviewer
+
+- **E2E against the real backend** (credential limits raised to 1000 in Docker, per IP+email
+  still 5): 78/78 in `desktop` + `mobile` against a fresh `next build && next start`. Against
+  the long-running dev server on :3001, `app-shell` "detail pages go back to their parent"
+  failed in both projects because that server answered every dynamic route (`/items/[itemId]…`)
+  with a 500 "Jest worker encountered 2 child process exceptions". That is a crashed dev-server
+  worker, not this code. Restart `npm run dev` if you see it.
+- `e2e/fixtures.ts` keeps the worker account's storage state in memory. A file under
+  `test-results/` disappeared mid-run (the dir is shared and cleaned by other Playwright runs).
+- The "never sends the password back" e2e now reads the action's response through `page.route`.
+  Chromium could still discard the body before `response.text()` ran, even when reading it
+  right away. It also asserts that the body holds the action state, so an empty body can't pass.
+
+## 2026-10-06 · BO-39 (A9 review fixes) · frontend-issue-implementer
+
+- **Logout CSRF (#7b), different rule than suggested:** `/api/auth/expired` doesn't check
+  `Sec-Fetch-Site`/`Origin`. It re-checks the token with `GET /auth/me` and clears the cookie
+  only on a 401; a valid session just continues to `next`. A same-origin rule would loop: a
+  link from an email to `/purchases` with a stale cookie is a cross-site redirect chain, and
+  not clearing there bounces `/login` → (proxy) `/feed` → expired → `/login` forever. If the
+  backend is unreachable, the cookie is kept and the user continues to `next` (error boundary).
+- **Current page on the server (#8):** `src/proxy.ts` sets the `x-renest-page-path` request
+  header (`NextResponse.next({ request: { headers } })`, always overwriting a client value,
+  `_rsc` stripped). It's the only reliable way: Server Components can't read the URL, and the
+  header is present for full loads, client navigations and Server Action posts. Every use goes
+  through `withNextParam`/`safeRedirectPath`. `getRouteRedirect` now takes `{ pagePath }`, so
+  the login `next` from the proxy also drops `_rsc`.
+- **Client IP (#4):** self-hosted Next keeps any client-sent `X-Forwarded-For` (it only fills
+  it in when missing, `base-server.js`), so `getClientIp` takes the **rightmost** entry and
+  forwards that single IP. It's only correct behind exactly one trusted proxy that sets or
+  appends the header (Vercel, nginx); documented in architecture.md "Client IP". Needs revisiting
+  if the deployment has more hops.
+- **Zones (#3):** not cached (`cache: "no-store"`): one small request per `/register` visit,
+  a stale copy could offer a zone the backend rejects, and a Data Cache key would vary with the
+  forwarded IP anyway. A 400 whose Nest message starts with `city ` maps to the zone field;
+  that relies on class-validator's message format (other 400s → "Revisa los datos e intenta de
+  nuevo.").
+- **Over-length login password** (> 128, only by bypassing `maxLength`) reuses "Revisa los datos
+  e intenta de nuevo." as its field error: no new copy.
+- `components/ui/checkbox.tsx` was removed (`git rm`, staged) since nothing uses it any more.
+- E2E selects zones by option index (they come from the backend now). Updated expectations:
+  stale-session redirects now end on `/login?next=<page>`. Added: stale cookie on `/purchases` →
+  login → back on `/purchases`; a valid session hitting `/api/auth/expired` keeps its cookie;
+  `next=/api/...` is ignored. **Not run** in this round (backend changes in progress).
+- **E2E is not in CI** (#11): run `npm run test:e2e` locally against `npm run docker:up` before
+  merging until CI e2e is reinstated (also in testing.md).
+
 ## 2026-10-06 · A9 (auth) · frontend-qa-reviewer
 
 - **E2E verified against the real backend** (ReNest-Backend `feat/a9-auth` in Docker): all specs

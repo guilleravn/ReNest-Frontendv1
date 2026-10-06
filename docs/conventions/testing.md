@@ -14,6 +14,15 @@
   time on a new machine: `npx playwright install chromium`.
 - The `pre-commit` hook runs `npm test` but not e2e: run `npm run test:e2e` before committing
   user flows.
+- E2E accounts: every browser request reaches the backend with the same forwarded IP, so don't
+  sign up in every test. A test that only needs "some signed-in user" uses `signedInTest` from
+  [e2e/fixtures.ts](../../e2e/fixtures.ts) (one account per worker, signed up once, reused via
+  `storageState`; `workerAccount` gives its email/password). Sign up explicitly only in tests
+  about sign-up, and in login tests (a fresh account each, so repeated logins don't hit the
+  per-email limit of 5 attempts / 60 s). Never forge `X-Forwarded-For`.
+- **CI doesn't run the e2e suite** (it needs the real backend). Until CI e2e is reinstated, run
+  `npm run test:e2e` locally against ReNest-Backend's `npm run docker:up` before merging any PR
+  that touches user flows, and say so in the PR.
 - Every spec runs in two Playwright projects: `desktop` (Desktop Chrome, 1280×720) and `mobile`
   (Pixel 7, Chromium). Write specs that pass in both. When a flow differs on small screens (e.g.
   the nav lives behind a menu button), branch on `test.info().project.name`. Use

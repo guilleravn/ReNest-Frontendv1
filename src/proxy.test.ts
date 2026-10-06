@@ -21,6 +21,13 @@ describe("proxy matcher", () => {
     },
   );
 
+  it.each(["/items/abcpng", "/listings/new-txt", "/purchases/xml", "/faviconxico"])(
+    "runs on the page %s, which only ends like a file extension (no dot)",
+    (path) => {
+      expect(unstable_doesMiddlewareMatch({ config, url: path })).toBe(true);
+    },
+  );
+
   it.each([
     "/_next/static/chunks/main.js",
     "/_next/image?url=%2Fbrand%2Flogo.svg&w=128&q=75",
@@ -59,5 +66,21 @@ describe("proxy", () => {
     const response = runProxy("/register");
 
     expect(response.headers.get("location")).toBeNull();
+  });
+});
+
+describe("proxy page-path header", () => {
+  it("tells the server which page the request is for, without Next's _rsc parameter", () => {
+    const request = new NextRequest(`${ORIGIN}/purchases?status=completed&_rsc=abc`);
+    request.cookies.set("renest_token", "token");
+    // A client-supplied value must never survive.
+    request.headers.set("x-renest-page-path", "//evil.example");
+
+    const response = proxy(request);
+
+    expect(response.headers.get("x-middleware-request-x-renest-page-path")).toBe(
+      "/purchases?status=completed",
+    );
+    expect(response.headers.get("x-middleware-override-headers")).toContain("x-renest-page-path");
   });
 });
