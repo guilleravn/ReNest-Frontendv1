@@ -91,8 +91,13 @@ scope**:
   other PR.
 - PR target is always `develop`. PR title references the Linear code (e.g.
   `[BO-27] Add listing detail page`); the description summarizes the change and links the ticket.
-- CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck and unit tests automatically
-  on every PR into `develop` — it does not run on plain pushes to feature branches. A PR cannot
-  merge until CI passes and at least one collaborator (not the author) approves it.
-- Playwright e2e is not part of CI for the MVP; run `npm run test:e2e` locally against a running
-  ReNest-Backend before opening a PR that touches user flows.
+- CI (`.github/workflows/ci.yml`) runs lint, format check, typecheck, unit tests and Playwright
+  e2e (against a real ReNest-Backend instance) automatically on every PR into `develop` — it does
+  not run on plain pushes to feature branches. A PR cannot merge until CI passes and at least one
+  collaborator (not the author) approves it.
+- The e2e job checks out `ReNest-Backend` using the `RENEST_CROSS_REPO_TOKEN` repo secret (a PAT
+  with read access to both repos). If it ever needs rotating, any of the 3 collaborators can
+  generate a new fine-grained PAT and update the secret in both repos' settings.
+- Merge with **squash merge**: every PR collapses into a single commit on `develop`, regardless of
+  how many commits the branch had. Use the PR title (`[BO-27] Add listing detail page`) as the
+  squashed commit's message.
