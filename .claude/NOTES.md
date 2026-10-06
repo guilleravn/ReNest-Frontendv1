@@ -13,6 +13,52 @@ Format:
 
 ---
 
+## 2026-10-06 · BO-43 (QA changes requested) · frontend-issue-implementer
+
+- `SearchField` now follows `?q=` after navigations it didn't make (home link, back/forward),
+  using the "adjust state during render" pattern with two states: the previous `defaultQuery`
+  (to notice a change) and the query the field expects next (its own last request, or the last
+  synced value). Its own search landing never overwrites what the user is still typing, and its
+  own clear doesn't flash the old text back while the request is in flight. No `key={q}` remount,
+  so focus is kept.
+- Removed `outline-none` from the search input: in Tailwind 4 it sets
+  `--tw-outline-style: none`, which also cancelled the `focus-visible:outline-2` ring.
+- Screen-reader announcements: one persistent `role="status"` (`sr-only`) region on the feed page,
+  outside the keyed results `<Suspense>`, holds its own `<Suspense key={q}>` whose text goes
+  "Cargando artículos…" → "N artículos encontrados." / the no-match or empty-feed copy
+  (`feed-announcement.ts`, `FeedStatus`). The visible count, `FeedSkeleton` and `EmptyFeed` are
+  no longer live regions. The wording deliberately differs from the visible "N resultados" so
+  text queries don't match both. `getFeed` is wrapped in React `cache()` (keyed on the `q`
+  string), so the two boundaries share one backend call per request.
+- E2E now run: `feed.spec.ts` + `app-shell.spec.ts`, 36/36 (desktop + mobile), against a
+  production build on :3001 and the backend Docker API with its feed seed.
+
+## 2026-10-06 · BO-43 (BO-5) · frontend-issue-implementer
+
+- `feed/error.tsx` also renders the page `<h1>`: the segment's error boundary replaces the whole
+  page, and `e2e/app-shell.spec.ts` expects that heading on `/feed` even without a backend. The
+  search field isn't shown in the error state (retry reloads the same `?q=`).
+- `parseSearchQuery` truncates to 120 chars instead of dropping the value: the backend 400s above
+  120 and that would land on the error page; the input also has `maxLength={120}`.
+- `getFeed` only forwards `q`. The backend rejects unknown params with 400, so the `?category=`
+  that `buildFeedSearchHref` keeps in the URL must not reach `GET /feed` until C2 agrees it.
+- Count copy is singular for one result ("1 resultado"), as in the reference. "N" is
+  `meta.total`; the count is not shown on the empty state (the reference doesn't either).
+- (Re-sync part superseded: see the "QA changes requested" entry above.) `SearchField` has one
+  `useEffect`, only to clear the pending debounce timer on unmount, so a
+  late `router.replace` can't pull the user back to `/feed` after they navigate away. The input
+  is not re-synced with `?q=` on back/forward navigation (would need deriving state from props);
+  the results do follow the URL. Flag it if product wants that.
+- Card photo `alt=""` (decorative, title is in the link name), unlike the reference which uses
+  the title as alt and so reads it twice. No location line or condition/verified badges on cards:
+  not in the `GET /feed` contract.
+- `SearchField` tests: Vitest fake timers need `shouldAdvanceTime: true` (Testing Library waits on
+  a real `setTimeout(0)` after each interaction and only flushes Jest's fake timers).
+- (Superseded: e2e now run, see above.) E2E `e2e/feed.spec.ts` assumes the backend seed's ACTIVE listings include "Leather armchair",
+  "Oak armchair" and "Desk lamp", and that "armchair" matches exactly 2 titles. Not run yet: the
+  backend's feed seed wasn't in place. UI was checked against a local mock at 1440/1024/768/375/
+  320px (no horizontal scroll) and in both themes.
+
 ## 2026-10-06 · BO-41 (PR #7 review) · frontend-qa-reviewer
 
 - `/listings` now follows the reference app's own "Mis artículos" screen, not `/purchases`: tabs
