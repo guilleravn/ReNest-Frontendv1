@@ -17,9 +17,9 @@ export async function registerThroughUi(page: Page, account: TestAccount = newTe
   await page.goto("/register");
   await page.getByLabel("Nombre").fill(account.fullName);
   await page.getByLabel("Correo").fill(account.email);
-  await page.getByLabel("Tu zona").selectOption("Palermo, Buenos Aires");
+  // Zones come from GET /zones: take the first real option (index 0 is the placeholder).
+  await page.getByLabel("Tu zona").selectOption({ index: 1 });
   await page.getByLabel("Contraseña").fill(account.password);
-  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page).toHaveURL("/feed");
   return account;

@@ -1,14 +1,9 @@
-import { expect, test } from "@playwright/test";
-
-import { registerThroughUi } from "./helpers/auth";
+import { expect, signedInTest as test } from "./fixtures";
 
 const isMobile = () => test.info().project.name === "mobile";
 
-// Every shell route needs a session (needs the real backend, see auth.spec.ts). The login
-// test clears it first.
-test.beforeEach(async ({ page }) => {
-  await registerThroughUi(page);
-});
+// Every shell route needs a session: tests start signed in as the worker account (needs the real
+// backend, see auth.spec.ts). The login test clears it first.
 
 test("the root URL opens the feed", async ({ page }) => {
   await page.goto("/");

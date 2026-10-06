@@ -1,9 +1,10 @@
-import { expect, test } from "@playwright/test";
-
+import { expect, signedInTest, test } from "./fixtures";
 import { fillLoginForm, logOutThroughUi, newTestAccount, registerThroughUi } from "./helpers/auth";
 
 // Needs the real ReNest-Backend (`npm run docker:up` in ../ReNest-Backend): these flows create
-// accounts and sign in against it.
+// accounts and sign in against it. Tests that only need a signed-in user share the worker
+// account (`signedInTest`); login tests sign up their own account so repeated logins don't hit
+// the backend's per-email limit (5 attempts / 60 s).
 // Alerts and status messages are matched by text: Next's route announcer is also an alert.
 
 const CREDENTIALS_ERROR = "Correo o contraseña incorrectos";
@@ -22,21 +23,21 @@ test("signing up lands on the feed with a welcome toast, shown once", async ({ p
   await expect(page.getByText(welcome)).toHaveCount(0);
 });
 
-test("signing up with a registered email shows it on the email field", async ({ page }) => {
-  const account = await registerThroughUi(page);
-  await logOutThroughUi(page);
+test("signing up with a registered email shows it on the email field", async ({
+  page,
+  workerAccount,
+}) => {
   await page.goto("/register");
 
   await page.getByLabel("Nombre").fill("Otra Persona");
-  await page.getByLabel("Correo").fill(account.email);
-  await page.getByLabel("Tu zona").selectOption("Condesa, CDMX");
+  await page.getByLabel("Correo").fill(workerAccount.email);
+  const [zone] = await page.getByLabel("Tu zona").selectOption({ index: 2 });
   await page.getByLabel("Contraseña").fill("another-pass-1");
-  await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
 
   await expect(page.getByText("Ya existe una cuenta con este correo.")).toBeVisible();
   await expect(page).toHaveURL("/register");
-  await expect(page.getByLabel("Tu zona")).toHaveValue("Condesa, CDMX");
+  await expect(page.getByLabel("Tu zona")).toHaveValue(zone ?? "");
 });
 
 test("signing in with the right password opens the feed", async ({ page }) => {
@@ -76,8 +77,8 @@ test("a protected route sends a signed-out user to login and back", async ({ pag
   await expect(page).toHaveURL("/purchases?status=completed");
 });
 
-test("the session survives a reload", async ({ page }) => {
-  await registerThroughUi(page);
+signedInTest("the session survives a reload", async ({ page }) => {
+  await page.goto("/feed");
 
   await page.reload();
 
@@ -85,8 +86,8 @@ test("the session survives a reload", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Mi cuenta" })).toBeVisible();
 });
 
-test("signing out returns to login and protects the app again", async ({ page }) => {
-  await registerThroughUi(page);
+signedInTest("signing out returns to login and protects the app again", async ({ page }) => {
+  await page.goto("/feed");
 
   await logOutThroughUi(page);
   await page.goto("/feed");
@@ -104,4 +105,20 @@ test("the auth screens have no horizontal scroll at 320px", async ({ page }) => 
     );
     expect(overflow).toBe(0);
   }
+});
+
+test("an expired session on a protected page returns there after signing in again", async ({
+  page,
+  context,
+}) => {
+  const account = await registerThroughUi(page);
+  await context.addCookies([
+    { name: "renest_token", value: "expired-or-revoked", url: "http://localhost:3001" },
+  ]);
+
+  await page.goto("/purchases?status=completed");
+
+  await expect(page).toHaveURL("/login?next=%2Fpurchases%3Fstatus%3Dcompleted");
+  await fillLoginForm(page, account.email, account.password);
+  await expect(page).toHaveURL("/purchases?status=completed");
 });

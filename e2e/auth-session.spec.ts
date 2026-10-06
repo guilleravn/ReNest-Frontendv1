@@ -1,9 +1,11 @@
-import { expect, test, type BrowserContext, type Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
+import { expect, signedInTest, test } from "./fixtures";
 import { fillLoginForm, logOutThroughUi, newTestAccount, registerThroughUi } from "./helpers/auth";
 
 // Session, redirect and form-hardening checks for A9. Needs the real ReNest-Backend
-// (`npm run docker:up` in ../ReNest-Backend), like auth.spec.ts.
+// (`npm run docker:up` in ../ReNest-Backend), like auth.spec.ts. Tests that only need a
+// signed-in user share the worker account (`signedInTest`); see auth.spec.ts.
 
 const SESSION_COOKIE = "renest_token";
 const FLASH_COOKIE = "renest_flash";
@@ -19,13 +21,28 @@ async function setBogusSession(context: BrowserContext) {
   ]);
 }
 
-/** Submits the visible form and waits for the Server Action's response. */
-async function submitAndWait(page: Page, buttonName: string) {
-  const [response] = await Promise.all([
-    page.waitForResponse((res) => res.request().method() === "POST"),
-    page.getByRole("button", { name: buttonName }).click(),
-  ]);
-  return response;
+/**
+ * Submits the visible form and returns the Server Action's response body. The POST goes through
+ * `page.route`, which reads the body from the network itself: Chromium may discard a response
+ * body before `response.text()` runs (e.g. once a production build starts prefetching links).
+ */
+async function submitAndReadResponse(page: Page, buttonName: string) {
+  let resolveBody: (body: string) => void = () => {};
+  const body = new Promise<string>((resolve) => {
+    resolveBody = resolve;
+  });
+  await page.route("**/*", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const response = await route.fetch();
+    const text = await response.text();
+    resolveBody(text);
+    await route.fulfill({ response, body: text });
+  });
+
+  await page.getByRole("button", { name: buttonName }).click();
+  const text = await body;
+  await page.unrouteAll({ behavior: "wait" });
+  return text;
 }
 
 test.describe("session cookie", () => {
@@ -63,8 +80,8 @@ test.describe("session cookie", () => {
     expect(actionBodies.join("\n")).not.toContain(token);
   });
 
-  test("is removed by signing out", async ({ page, context }) => {
-    await registerThroughUi(page);
+  signedInTest("is removed by signing out", async ({ page, context }) => {
+    await page.goto("/feed");
 
     await logOutThroughUi(page);
 
@@ -81,7 +98,7 @@ test.describe("stale session", () => {
 
     await page.goto("/feed");
 
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/login?next=%2Ffeed");
     await expect(page.getByRole("heading", { level: 1, name: "Inicia sesión" })).toBeVisible();
     expect(await getCookie(context, SESSION_COOKIE)).toBeUndefined();
   });
@@ -94,20 +111,55 @@ test.describe("stale session", () => {
 
     await page.goto("/login");
 
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/login?next=%2Ffeed");
     await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
     expect(await getCookie(context, SESSION_COOKIE)).toBeUndefined();
   });
 
-  test("a session rejected during client navigation sends the user to login", async ({
-    page,
-    context,
-  }) => {
-    await registerThroughUi(page);
+  signedInTest(
+    "a session rejected during client navigation sends the user to login",
+    async ({ page, context }) => {
+      await page.goto("/feed");
+      await setBogusSession(context);
+
+      // "Mis compras" lives in the (detail) layout, which checks the session again.
+      await page.getByRole("link", { name: /Mis compras/ }).click();
+
+      await expect(page).toHaveURL("/login?next=%2Fpurchases");
+      expect(await getCookie(context, SESSION_COOKIE)).toBeUndefined();
+    },
+  );
+
+  test("ignores a page-path header sent by the client", async ({ page, context }) => {
+    await setBogusSession(context);
+    // The proxy must overwrite it with the real page before any server code reads it.
+    await page.setExtraHTTPHeaders({ "x-renest-page-path": "/listings" });
+
+    await page.goto("/purchases");
+
+    await expect(page).toHaveURL("/login?next=%2Fpurchases");
+  });
+});
+
+test.describe("expired-session handler", () => {
+  signedInTest(
+    "can't sign out a valid session (e.g. from a link on another site)",
+    async ({ page, context }) => {
+      const token = (await getCookie(context, SESSION_COOKIE))?.value;
+
+      await page.goto("/api/auth/expired?next=%2Flistings", {
+        referer: "https://evil.example/",
+      });
+
+      await expect(page).toHaveURL("/listings");
+      expect((await getCookie(context, SESSION_COOKIE))?.value).toBe(token);
+    },
+  );
+
+  test("never sends the user back to a Route Handler", async ({ page, context }) => {
     await setBogusSession(context);
 
-    // "Mis compras" lives in the (detail) layout, which checks the session again.
-    await page.getByRole("link", { name: /Mis compras/ }).click();
+    await page.goto("/api/auth/expired?next=%2Fapi%2Fauth%2Fexpired");
 
     await expect(page).toHaveURL("/login");
     expect(await getCookie(context, SESSION_COOKIE)).toBeUndefined();
@@ -152,10 +204,12 @@ test.describe("login form", () => {
     await page.getByLabel("Correo").fill(account.email);
     await page.getByLabel("Contraseña").fill(wrongPassword);
 
-    const response = await submitAndWait(page, "Entrar");
+    const responseBody = await submitAndReadResponse(page, "Entrar");
 
     await expect(page.getByText("Correo o contraseña incorrectos")).toBeVisible();
-    expect(await response.text()).not.toContain(wrongPassword);
+    // The action state really came back (an empty body would pass trivially).
+    expect(responseBody).toContain('"status":"error"');
+    expect(responseBody).not.toContain(wrongPassword);
     await expect(page.getByLabel("Contraseña")).toHaveValue("");
   });
 
@@ -179,6 +233,21 @@ test.describe("login form", () => {
   });
 });
 
+test.describe("login password", () => {
+  test("an over-length password gets a field error, not a connection error", async ({ page }) => {
+    await page.goto("/login");
+    // Only reachable by bypassing the input's maxLength.
+    await page.getByLabel("Contraseña").evaluate((input) => input.removeAttribute("maxlength"));
+
+    await fillLoginForm(page, newTestAccount().email, "a".repeat(129));
+
+    await expect(page.getByText("Revisa los datos e intenta de nuevo.")).toBeVisible();
+    await expect(page.getByText("No pudimos conectar con ReNest. Intenta de nuevo.")).toHaveCount(
+      0,
+    );
+  });
+});
+
 test.describe("sign-up form", () => {
   test("shows every field error and focuses the first invalid field", async ({ page }) => {
     await page.goto("/register");
@@ -190,7 +259,6 @@ test.describe("sign-up form", () => {
       "Correo no válido",
       "Elige tu zona para coordinar recogidas",
       "La contraseña debe tener al menos 8 caracteres",
-      "Acepta los Términos y la Política de privacidad",
     ]) {
       await expect(page.getByText(message)).toBeVisible();
     }
@@ -205,19 +273,48 @@ test.describe("sign-up form", () => {
     await page.goto("/register");
     await page.getByLabel("Nombre").fill(account.fullName);
     await page.getByLabel("Correo").fill(account.email);
-    await page.getByLabel("Tu zona").selectOption("Miraflores, Lima");
+    const [zone] = await page.getByLabel("Tu zona").selectOption({ index: 1 });
     await page.getByLabel("Teléfono").fill("12345");
     await page.getByLabel("Contraseña").fill(account.password);
-    await page.getByRole("checkbox").check();
 
     await page.getByRole("button", { name: "Crear cuenta" }).click();
 
     await expect(page.getByText("Teléfono no válido")).toBeVisible();
     await expect(page.getByLabel("Teléfono")).toBeFocused();
     await expect(page.getByLabel("Nombre")).toHaveValue(account.fullName);
-    await expect(page.getByLabel("Tu zona")).toHaveValue("Miraflores, Lima");
-    await expect(page.getByRole("checkbox")).toBeChecked();
+    await expect(page.getByLabel("Tu zona")).toHaveValue(zone ?? "");
     await expect(page.getByLabel("Contraseña")).toHaveValue("");
+  });
+
+  test("shows a zone the backend doesn't offer on the zone field", async ({ page }) => {
+    const account = newTestAccount();
+    await page.goto("/register");
+    // Simulates a zone the backend dropped after the page loaded.
+    await page.getByLabel("Tu zona").evaluate((select) => {
+      select.append(new Option("Atlántida, Mar", "Atlántida, Mar"));
+    });
+    await page.getByLabel("Nombre").fill(account.fullName);
+    await page.getByLabel("Correo").fill(account.email);
+    await page.getByLabel("Tu zona").selectOption("Atlántida, Mar");
+    await page.getByLabel("Contraseña").fill(account.password);
+
+    await page.getByRole("button", { name: "Crear cuenta" }).click();
+
+    await expect(page.getByLabel("Tu zona")).toHaveAccessibleDescription(
+      /Elige tu zona para coordinar recogidas/,
+    );
+    await expect(page.getByLabel("Tu zona")).toBeFocused();
+    // Back on the placeholder, not silently on another zone.
+    await expect(page.getByLabel("Tu zona")).toHaveValue("");
+    await expect(page).toHaveURL("/register");
+  });
+
+  test("lists the zones the backend offers", async ({ page, request }) => {
+    const zones: string[] = await (await request.get("http://localhost:3000/zones")).json();
+
+    await page.goto("/register");
+
+    await expect(page.getByLabel("Tu zona").locator("option:not([disabled])")).toHaveText(zones);
   });
 
   test("accepts a phone typed with spaces", async ({ page }) => {
@@ -225,10 +322,9 @@ test.describe("sign-up form", () => {
     await page.goto("/register");
     await page.getByLabel("Nombre").fill(account.fullName);
     await page.getByLabel("Correo").fill(account.email);
-    await page.getByLabel("Tu zona").selectOption("Roma Norte, CDMX");
+    await page.getByLabel("Tu zona").selectOption({ index: 1 });
     await page.getByLabel("Teléfono").fill("+52 55 1234 5678");
     await page.getByLabel("Contraseña").fill(account.password);
-    await page.getByRole("checkbox").check();
 
     await page.getByRole("button", { name: "Crear cuenta" }).click();
 
@@ -254,15 +350,15 @@ test.describe("sign-up form", () => {
 });
 
 test.describe("account menu", () => {
-  test("works with the keyboard", async ({ page }) => {
-    const account = await registerThroughUi(page);
+  signedInTest("works with the keyboard", async ({ page, workerAccount }) => {
+    await page.goto("/feed");
     const trigger = page.getByRole("button", { name: "Mi cuenta" });
 
     await trigger.focus();
     await page.keyboard.press("Enter");
 
     await expect(trigger).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByText(account.email)).toBeVisible();
+    await expect(page.getByText(workerAccount.email)).toBeVisible();
     await expect(page.getByRole("button", { name: "Cerrar sesión" })).toBeFocused();
 
     await page.keyboard.press("Escape");
