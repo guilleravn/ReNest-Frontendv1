@@ -17,10 +17,8 @@ test("the tab navigation switches between the feed and my listings", async ({ pa
 
   await nav.getByRole("link", { name: /Mis artículos/ }).click();
 
+  // Only the shell is asserted here: the page content needs the backend (see listings.spec.ts).
   await expect(page).toHaveURL("/listings");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Lo que estás vendiendo" }),
-  ).toBeVisible();
   await expect(nav.getByRole("link", { name: /Mis artículos/ })).toHaveAttribute(
     "aria-current",
     "page",
