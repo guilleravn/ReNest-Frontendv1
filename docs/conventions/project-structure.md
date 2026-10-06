@@ -28,6 +28,7 @@ src/
     queries.ts                  #   TanStack Query queryOptions/keys (if there are client queries)
     *.test.ts(x)                #   tests colocated with the code
   components/ui/                # Shared, feature-agnostic UI primitives (Button, TextField, ...)
+  components/layout/            # App shell: header, tab navigation, back link (architecture.md)
   lib/                          # Infrastructure: env, API client, query client
   test/                         # Vitest setup
 e2e/                            # Playwright specs (*.spec.ts)
