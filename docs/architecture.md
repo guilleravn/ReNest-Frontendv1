@@ -74,9 +74,10 @@ plan of the login story and then record them in the Endpoints table below.
 
 Format when adding a new row:
 
-| Method | Path                                          | Auth | Request                                                         | Response schema (frontend)                                                                                                                                        | Used by                                          |
-| ------ | --------------------------------------------- | ---- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Yes  | `status` optional (omitted = all statuses, current seller only) | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See note below. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| Method | Path                                          | Auth | Request                                                                                          | Response schema (frontend)                                                                                                                                                                                                                               | Used by                                          |
+| ------ | --------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Yes  | `status` optional (omitted = all statuses, current seller only)                                  | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See note below.                                                                                        | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| GET    | `/feed?q=&page=&pageSize=`                    | Yes  | All optional: `q` title search (trimmed, ≤ 120 chars), `page` ≥ 1, `pageSize` 1–100 (default 20) | `feedResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: [{ id, title, priceCents, photoUrl, category: { slug, name }, publishedAt }], meta: { page, pageSize, total } }`; `400` on invalid or unknown params. See note below. | `src/app/(tabs)/feed/page.tsx` (BO-43/BO-5)      |
 
 Notes on `GET /listings`:
 
@@ -89,6 +90,17 @@ Notes on `GET /listings`:
 - The backend paginates (`page`, `pageSize`, default 20; `meta` also carries `page` and
   `pageSize`). There is no pagination UI yet: the page shows the first page only and says
   "Mostrando N de M" when `meta.total` is larger.
+
+Notes on `GET /feed`:
+
+- Shared with the backend work package of BO-5 (BO-43 on this side). Every ACTIVE listing,
+  including the current user's own. `q` is a case-insensitive title search; the backend trims it
+  and rejects more than 120 characters, so the frontend trims and caps it the same way
+  ([feed-search.ts](../src/features/listings/feed-search.ts)) and only sends `q` when non-blank.
+- `400` on an invalid `q`/`page`/`pageSize` **or any unknown param**: never forward page URL
+  params blindly (e.g. a future `?category=` needs its own contract first).
+- `photoUrl` and `priceCents`: same caveats as `GET /listings` above. Pagination: same as above
+  ("Mostrando N de M artículos").
 
 ## Providers and layouts
 
@@ -111,7 +123,7 @@ epic is built. Auth is "No" everywhere until the login flow and `src/proxy.ts` e
 | Route                           | Shell           | Back link (phone) | Description                                                            |
 | ------------------------------- | --------------- | ----------------- | ---------------------------------------------------------------------- |
 | `/`                             | none            | —                 | Redirects to `/feed`                                                   |
-| `/feed`                         | `(tabs)`        | —                 | Feed (Epic 1)                                                          |
+| `/feed`                         | `(tabs)`        | —                 | Feed (Epic 1); title search in `?q=`                                   |
 | `/items/[itemId]`               | `(detail)`      | `/feed`           | Item detail (Epic 1)                                                   |
 | `/items/[itemId]/contact`       | `(detail)`      | `/items/[itemId]` | Question to seller (Epic 1)                                            |
 | `/items/[itemId]/pickup`        | `(detail)`      | `/items/[itemId]` | Schedule pickup (Epic 2)                                               |
