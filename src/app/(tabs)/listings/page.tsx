@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { SegmentedTabs } from "@/components/ui/segmented-tabs";
+import { ChipTabs } from "@/components/ui/chip-tabs";
 import { ListingsResults } from "@/features/listings/components/listings-results";
 import { ListingsSkeleton } from "@/features/listings/components/listings-skeleton";
 import { LISTING_STATUS_TABS, parseListingStatus } from "@/features/listings/listing-status";
@@ -11,7 +11,7 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
   return (
     <>
       <h1 className="font-heading text-3xl max-sm:text-2xl">Lo que estás vendiendo</h1>
-      <SegmentedTabs
+      <ChipTabs
         label="Estado de tus publicaciones"
         className="mt-4"
         tabs={LISTING_STATUS_TABS.map(({ status, label, href }) => ({

@@ -29,6 +29,16 @@ describe("ListingCard", () => {
     expect(screen.getByText("$1,500")).toBeInTheDocument();
   });
 
+  it.each([
+    ["ACTIVE", "Activo"],
+    ["PENDING", "Venta en proceso"],
+    ["COMPLETED", "Completado"],
+  ] as const)("labels a %s listing as %s", (status, label) => {
+    render(<ListingCard listing={{ ...baseListing, status }} />);
+
+    expect(screen.getByText(label)).toBeInTheDocument();
+  });
+
   it("renders a placeholder instead of crashing when the listing has no photo", () => {
     render(<ListingCard listing={{ ...baseListing, photoUrl: null }} />);
 

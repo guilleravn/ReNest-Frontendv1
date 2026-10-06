@@ -6,15 +6,11 @@ type EmptyListingsProps = {
 
 /** Status-specific copy for when a seller has no listings in the selected tab. */
 const EMPTY_COPY: Record<ListingStatusTab, string> = {
+  PENDING: "No tienes ventas en proceso.",
   ACTIVE: "No tienes publicaciones activas todavía.",
-  PENDING: "No tienes publicaciones pendientes de entrega.",
   COMPLETED: "Aún no tienes ventas completadas.",
 };
 
 export function EmptyListings({ status }: EmptyListingsProps) {
-  return (
-    <p className="text-muted mt-8 text-center text-sm" role="status">
-      {EMPTY_COPY[status]}
-    </p>
-  );
+  return <p className="text-muted mt-8 text-center text-sm">{EMPTY_COPY[status]}</p>;
 }
