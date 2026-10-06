@@ -9,8 +9,8 @@ export function isRenderablePhotoUrl(photoUrl: string | null): photoUrl is strin
   if (!photoUrl) return false;
 
   try {
-    new URL(photoUrl);
-    return true;
+    const url = new URL(photoUrl);
+    return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
   }

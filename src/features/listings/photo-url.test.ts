@@ -16,4 +16,10 @@ describe("isRenderablePhotoUrl", () => {
       false,
     );
   });
+
+  it("rejects non-http(s) protocols even when they parse as a valid URL", () => {
+    expect(isRenderablePhotoUrl("javascript:alert(1)")).toBe(false);
+    expect(isRenderablePhotoUrl("data:image/png;base64,aaaa")).toBe(false);
+    expect(isRenderablePhotoUrl("file:///etc/passwd")).toBe(false);
+  });
 });
