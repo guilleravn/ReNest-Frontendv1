@@ -72,10 +72,11 @@ plan of the login story and then record them in the Endpoints table below.
 
 ### Endpoints
 
-_None agreed yet._ Format when adding:
+Format when adding a new row:
 
-| Method | Path | Auth | Request | Response schema (frontend) | Used by |
-| ------ | ---- | ---- | ------- | -------------------------- | ------- |
+| Method | Path                                          | Auth | Request                                                                      | Response schema (frontend)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Used by                                          |
+| ------ | --------------------------------------------- | ---- | ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Yes  | `status` query param, optional (omitted = all statuses, current seller only) | `listingsResponseSchema` ([src/features/listings/schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`. `Listing.photoUrl` is nullable and, despite the name, currently a bare storage key (e.g. `"listings/<id>/photo-0.jpg"`), not an absolute URL — there's no public bucket/CDN yet (see "Known gaps" in CLAUDE.md). The frontend treats anything that isn't a parseable absolute URL the same as "no photo" ([src/features/listings/photo-url.ts](../src/features/listings/photo-url.ts)). `400` on an invalid status value. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
 
 ## Providers and layouts
 
