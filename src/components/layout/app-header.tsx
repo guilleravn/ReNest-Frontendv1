@@ -1,15 +1,19 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { ShoppingBagIcon } from "@/components/ui/icons";
+
 import { BackLink } from "./back-link";
 import { CountBadge } from "./count-badge";
-import { ShoppingBagIcon, UserIcon } from "./icons";
 
 type AppHeaderProps = {
   /** The buyer's purchases with a scheduled pickup; undefined while unknown. */
   scheduledPurchasesCount?: number;
-  /** First letter of the signed-in user's name; a generic icon while unknown. */
-  userInitial?: string;
+  /**
+   * Slot at the right edge for the signed-in user's account menu (avatar with their initial).
+   * A slot keeps the shell free of auth code: the layout composes it.
+   */
+  accountMenu?: React.ReactNode;
   /** Detail pages: bottom border and a phone-only back link instead of the tab navigation. */
   isDetail?: boolean;
 };
@@ -19,7 +23,7 @@ const FOCUS_RING =
 
 export function AppHeader({
   scheduledPurchasesCount,
-  userInitial,
+  accountMenu,
   isDetail = false,
 }: AppHeaderProps) {
   const hasScheduled = scheduledPurchasesCount !== undefined && scheduledPurchasesCount > 0;
@@ -76,18 +80,7 @@ export function AppHeader({
           <span className="max-sm:hidden">Mis compras</span>
         </Link>
 
-        {/* TODO(auth): turn into the account menu (logout) once the login flow exists. */}
-        <span
-          role="img"
-          aria-label="Mi cuenta"
-          className="border-border-strong bg-surface text-foreground ml-1 grid size-8 shrink-0 place-items-center rounded-full border text-xs font-semibold"
-        >
-          {userInitial ? (
-            <span aria-hidden="true">{userInitial.toUpperCase()}</span>
-          ) : (
-            <UserIcon className="size-4" />
-          )}
-        </span>
+        {accountMenu}
       </div>
     </header>
   );

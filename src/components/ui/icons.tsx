@@ -1,5 +1,6 @@
-// Inline copies of the reference app's icons (Lucide house/shopping-bag/user, Ionicons
-// pricetags/chevron-back), so the shell doesn't pull in an icon library. All decorative.
+// Inline copies of the reference app's icons (Lucide house/shopping-bag/user/shield-check/
+// circle-check/chevron-down/x/log-out, Ionicons pricetags/chevron-back), so the app doesn't
+// pull in an icon library. All decorative.
 
 type IconProps = React.ComponentProps<"svg">;
 
@@ -76,5 +77,50 @@ export function ChevronBackIcon(props: IconProps) {
         d="M328 112 184 256l144 144"
       />
     </svg>
+  );
+}
+
+export function ShieldCheckIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </StrokeIcon>
+  );
+}
+
+export function CircleCheckIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </StrokeIcon>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </StrokeIcon>
+  );
+}
+
+export function LogOutIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    </StrokeIcon>
+  );
+}
+
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m6 9 6 6 6-6" />
+    </StrokeIcon>
   );
 }
