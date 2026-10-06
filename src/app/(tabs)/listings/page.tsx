@@ -1,12 +1,12 @@
+import { Suspense } from "react";
+
 import { SegmentedTabs } from "@/components/ui/segmented-tabs";
-import { getListings } from "@/features/listings/api";
-import { EmptyListings } from "@/features/listings/components/empty-listings";
-import { ListingCard } from "@/features/listings/components/listing-card";
+import { ListingsResults } from "@/features/listings/components/listings-results";
+import { ListingsSkeleton } from "@/features/listings/components/listings-skeleton";
 import { LISTING_STATUS_TABS, parseListingStatus } from "@/features/listings/listing-status";
 
 export default async function ListingsPage({ searchParams }: PageProps<"/listings">) {
   const activeStatus = parseListingStatus((await searchParams).status);
-  const { data: listings } = await getListings(activeStatus);
 
   return (
     <>
@@ -20,15 +20,10 @@ export default async function ListingsPage({ searchParams }: PageProps<"/listing
           isActive: status === activeStatus,
         }))}
       />
-      {listings.length > 0 ? (
-        <ul className="mt-6 grid grid-cols-4 gap-4 max-lg:grid-cols-3 max-md:grid-cols-2 max-sm:grid-cols-1">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </ul>
-      ) : (
-        <EmptyListings status={activeStatus} />
-      )}
+      {/* Keyed by status so switching tabs shows the skeleton again instead of stale results. */}
+      <Suspense key={activeStatus} fallback={<ListingsSkeleton />}>
+        <ListingsResults status={activeStatus} />
+      </Suspense>
     </>
   );
 }
