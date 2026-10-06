@@ -30,6 +30,10 @@ describe("listingSchema", () => {
     );
   });
 
+  it.each([1500.5, -100])("rejects a priceCents of %d", (priceCents) => {
+    expect(listingSchema.safeParse({ ...validListing, priceCents }).success).toBe(false);
+  });
+
   it("accepts a null photoUrl (a listing can have zero photos at the DB level)", () => {
     expect(listingSchema.safeParse({ ...validListing, photoUrl: null }).success).toBe(true);
   });

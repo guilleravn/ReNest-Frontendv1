@@ -1,13 +1,15 @@
+const usdFormatter = new Intl.NumberFormat("es-419", {
+  style: "currency",
+  currency: "USD",
+  // "$1,500" instead of es-419's default "USD 1,500", as in the reference app.
+  currencyDisplay: "narrowSymbol",
+  maximumFractionDigits: 0,
+});
+
 /**
- * Formats a price given in cents as a grouped integer amount with a currency-agnostic "$" sign.
- * No currency code has been decided for the MVP yet (see docs/architecture.md), so this
- * intentionally avoids `Intl.NumberFormat`'s `currency` style, which would require one. The
- * `es-419` (Latin America Spanish) locale is used for grouping since it's the only one that
- * groups small amounts (e.g. 1500) consistently instead of the generic `es` root locale, which
- * only groups from 10,000 up.
+ * Formats a listing price. Every price is in whole US dollars (ReNest-Backend's
+ * business-invariants.md, decided 2026-10-06), sent as cents, so no decimals are shown.
  */
 export function formatPriceCents(priceCents: number): string {
-  const amount = Math.round(priceCents) / 100;
-
-  return `$${new Intl.NumberFormat("es-419", { maximumFractionDigits: 0 }).format(amount)}`;
+  return usdFormatter.format(priceCents / 100);
 }
