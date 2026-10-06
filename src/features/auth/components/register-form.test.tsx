@@ -11,24 +11,24 @@ const { registerAction } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/auth/actions", () => ({ registerAction }));
 
+const ZONES = ["Condesa, CDMX", "Palermo, Buenos Aires"];
+
 const VALUES: RegisterValues = {
   fullName: "Camila Torres",
   email: "camila@renest.app",
   city: "Palermo, Buenos Aires",
   phoneE164: "+54 9 11 2345 6789",
-  acceptedTerms: true,
 };
 
 async function fillAndSubmit() {
   const user = userEvent.setup();
-  render(<RegisterForm />);
+  render(<RegisterForm zones={ZONES} />);
 
   await user.type(screen.getByLabelText("Nombre"), VALUES.fullName);
   await user.type(screen.getByLabelText("Correo"), VALUES.email);
   await user.selectOptions(screen.getByLabelText("Tu zona"), VALUES.city);
   await user.type(screen.getByLabelText("Teléfono"), VALUES.phoneE164);
   await user.type(screen.getByLabelText("Contraseña"), "secret123");
-  await user.click(screen.getByRole("checkbox"));
   await user.click(screen.getByRole("button", { name: "Crear cuenta" }));
 }
 
@@ -76,7 +76,6 @@ describe("RegisterForm", () => {
     expect(screen.getByLabelText("Correo")).toHaveValue(VALUES.email);
     expect(screen.getByLabelText("Tu zona")).toHaveValue(VALUES.city);
     expect(screen.getByLabelText("Teléfono")).toHaveValue(VALUES.phoneE164);
-    expect(screen.getByRole("checkbox")).toBeChecked();
     expect(screen.getByLabelText("Contraseña")).toHaveValue("");
   });
 

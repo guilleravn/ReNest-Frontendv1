@@ -1,4 +1,4 @@
-// Pieces shared by the form field primitives (TextField, SelectField, Checkbox).
+// Pieces shared by the form field primitives (TextField, SelectField).
 
 /** Base look of text-like controls. `aria-invalid` turns the border to the error color. */
 export const CONTROL_CLASSES =

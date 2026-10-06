@@ -7,6 +7,7 @@ import { FormAlert } from "@/components/ui/form-alert";
 import { TextField } from "@/components/ui/text-field";
 import { loginAction } from "@/features/auth/actions";
 import { INITIAL_LOGIN_STATE } from "@/features/auth/form-state";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 
 import { useFocusFirstInvalidField } from "./use-focus-first-invalid-field";
 
@@ -40,6 +41,7 @@ export function LoginForm({ next }: LoginFormProps) {
         name="password"
         type="password"
         autoComplete="current-password"
+        maxLength={AUTH_FIELD_LIMITS.passwordMax}
         placeholder="••••••••"
         required
         error={hasError ? state.fieldErrors.password?.[0] : undefined}

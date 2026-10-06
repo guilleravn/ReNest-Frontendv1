@@ -1,18 +1,5 @@
 import { z } from "zod";
 
-/** Zones a user can pick at sign-up. Exact strings: the backend validates against them. */
-export const USER_ZONES = [
-  "Roma Norte, CDMX",
-  "Condesa, CDMX",
-  "Palermo, Buenos Aires",
-  "Providencia, Santiago",
-  "Chapinero, Bogotá",
-  "Miraflores, Lima",
-  "Pinheiros, São Paulo",
-] as const;
-
-export type UserZone = (typeof USER_ZONES)[number];
-
 /** Field limits shared by the schemas and the inputs' `maxLength` (same as the backend). */
 export const AUTH_FIELD_LIMITS = {
   fullNameMax: 120,
@@ -21,15 +8,19 @@ export const AUTH_FIELD_LIMITS = {
   passwordMax: 128,
 } as const;
 
-const MESSAGES = {
+/** Field error copy, also used to map backend rejections to a field. */
+export const AUTH_FIELD_MESSAGES = {
   fullName: "Ingresa tu nombre",
   email: "Correo no válido",
   city: "Elige tu zona para coordinar recogidas",
   phone: "Teléfono no válido",
   password: "La contraseña debe tener al menos 8 caracteres",
   loginPassword: "Ingresa tu contraseña",
-  terms: "Acepta los Términos y la Política de privacidad",
+  /** Over-length login password: only reachable by bypassing the input's `maxLength`. */
+  invalidInput: "Revisa los datos e intenta de nuevo.",
 } as const;
+
+const MESSAGES = AUTH_FIELD_MESSAGES;
 
 const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
 
@@ -48,14 +39,17 @@ const emailSchema = z
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string({ error: MESSAGES.loginPassword }).min(1, MESSAGES.loginPassword),
+  password: z
+    .string({ error: MESSAGES.loginPassword })
+    .min(1, MESSAGES.loginPassword)
+    .max(AUTH_FIELD_LIMITS.passwordMax, MESSAGES.invalidInput),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
 /**
- * Sign-up form → `POST /auth/register` body. Accepts the raw form values (the checkbox sends
- * `"on"`) and outputs the backend payload: an empty phone becomes `null`.
+ * Sign-up form → `POST /auth/register` body: an empty phone becomes `null`. `city` only needs
+ * to be present here; the backend checks it against `GET /zones` (its source of truth).
  */
 export const registerSchema = z.object({
   fullName: z
@@ -64,7 +58,7 @@ export const registerSchema = z.object({
     .min(2, MESSAGES.fullName)
     .max(AUTH_FIELD_LIMITS.fullNameMax, MESSAGES.fullName),
   email: emailSchema,
-  city: z.enum(USER_ZONES, { error: MESSAGES.city }),
+  city: z.string({ error: MESSAGES.city }).trim().min(1, MESSAGES.city),
   phoneE164: z.preprocess(
     (value) => (typeof value === "string" ? normalizePhone(value) || null : (value ?? null)),
     z.string({ error: MESSAGES.phone }).regex(E164_PATTERN, MESSAGES.phone).nullable(),
@@ -73,13 +67,12 @@ export const registerSchema = z.object({
     .string({ error: MESSAGES.password })
     .min(AUTH_FIELD_LIMITS.passwordMin, MESSAGES.password)
     .max(AUTH_FIELD_LIMITS.passwordMax, MESSAGES.password),
-  acceptedTerms: z.preprocess(
-    (value) => value === "on" || value === true,
-    z.literal(true, { error: MESSAGES.terms }),
-  ),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+/** `GET /zones` response: the zones a user can pick at sign-up (also the option labels). */
+export const zonesSchema = z.array(z.string().trim().min(1)).min(1);
 
 /** `POST /auth/login` and `POST /auth/register` response. */
 export const authTokenSchema = z.object({

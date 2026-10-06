@@ -3,18 +3,22 @@
 import { useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { FormAlert } from "@/components/ui/form-alert";
 import { ShieldCheckIcon } from "@/components/ui/icons";
 import { SelectField } from "@/components/ui/select-field";
 import { TextField } from "@/components/ui/text-field";
 import { registerAction } from "@/features/auth/actions";
 import { INITIAL_REGISTER_STATE } from "@/features/auth/form-state";
-import { AUTH_FIELD_LIMITS, USER_ZONES } from "@/features/auth/schemas";
+import { AUTH_FIELD_LIMITS } from "@/features/auth/schemas";
 
 import { useFocusFirstInvalidField } from "./use-focus-first-invalid-field";
 
-export function RegisterForm() {
+type RegisterFormProps = {
+  /** Zone options, from `GET /zones` (the backend is their source of truth). */
+  zones: readonly string[];
+};
+
+export function RegisterForm({ zones }: RegisterFormProps) {
   const [state, formAction, isPending] = useActionState(registerAction, INITIAL_REGISTER_STATE);
   const formRef = useFocusFirstInvalidField(state);
   const values = state.status === "error" ? state.values : undefined;
@@ -48,7 +52,7 @@ export function RegisterForm() {
       <SelectField
         label="Tu zona"
         name="city"
-        options={USER_ZONES}
+        options={zones}
         placeholder="Elige tu zona"
         required
         defaultValue={values?.city ?? ""}
@@ -77,18 +81,6 @@ export function RegisterForm() {
         hint="Al menos 8 caracteres."
         error={errors.password?.[0]}
       />
-      <Checkbox
-        name="acceptedTerms"
-        required
-        defaultChecked={values?.acceptedTerms}
-        error={errors.acceptedTerms?.[0]}
-        label={
-          <>
-            Acepto los <strong className="text-primary font-semibold">Términos</strong> y la{" "}
-            <strong className="text-primary font-semibold">Política de privacidad</strong>.
-          </>
-        }
-      />
 
       <Button type="submit" isFullWidth disabled={isPending} className="mt-2">
         {isPending ? "Creando cuenta…" : "Crear cuenta"}
@@ -96,7 +88,7 @@ export function RegisterForm() {
 
       <p className="text-muted flex items-start gap-2 text-sm">
         <ShieldCheckIcon className="text-verified mt-0.5 size-4 shrink-0" />
-        Verificamos la identidad de cada miembro para que compres y vendas con confianza.
+        Los vendedores verificados por ReNest llevan una insignia, para que sepas en quién confiar.
       </p>
     </form>
   );

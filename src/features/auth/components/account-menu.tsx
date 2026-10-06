@@ -70,8 +70,8 @@ export function AccountMenu({ fullName, email }: AccountMenuProps) {
         className="border-border bg-surface shadow-menu absolute top-full right-0 z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-lg border p-2"
       >
         <div className="border-border flex flex-col gap-0.5 border-b px-2 pt-1 pb-2">
-          <p className="text-foreground truncate text-sm font-semibold">{fullName}</p>
-          <p className="text-muted truncate text-sm">{email}</p>
+          <p className="text-foreground text-sm font-semibold wrap-anywhere">{fullName}</p>
+          <p className="text-muted text-sm wrap-anywhere">{email}</p>
         </div>
         <form action={logoutAction} className="pt-1">
           <button

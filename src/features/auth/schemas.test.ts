@@ -7,6 +7,7 @@ import {
   normalizePhone,
   registerSchema,
   sessionUserSchema,
+  zonesSchema,
 } from "./schemas";
 
 function fieldErrorsOf(result: { error?: z.ZodError }) {
@@ -51,7 +52,6 @@ describe("registerSchema", () => {
     city: "Palermo, Buenos Aires",
     phoneE164: "+54 9 11 2345-6789",
     password: "secret123",
-    acceptedTerms: "on",
   };
 
   it("turns the form values into the backend payload", () => {
@@ -61,7 +61,6 @@ describe("registerSchema", () => {
       city: "Palermo, Buenos Aires",
       phoneE164: "+5491123456789",
       password: "secret123",
-      acceptedTerms: true,
     });
   });
 
@@ -79,18 +78,13 @@ describe("registerSchema", () => {
     ["email", { email: "camila@" }, "Correo no válido"],
     ["email", { email: `${"a".repeat(250)}@b.com` }, "Correo no válido"],
     ["city", { city: undefined }, "Elige tu zona para coordinar recogidas"],
-    ["city", { city: "Narnia" }, "Elige tu zona para coordinar recogidas"],
+    ["city", { city: "   " }, "Elige tu zona para coordinar recogidas"],
     ["phoneE164", { phoneE164: "5512345678" }, "Teléfono no válido"],
     ["phoneE164", { phoneE164: "+0 55 1234 5678" }, "Teléfono no válido"],
     ["phoneE164", { phoneE164: "+52 123" }, "Teléfono no válido"],
     ["phoneE164", { phoneE164: "+52 55 1234 5678 9012" }, "Teléfono no válido"],
     ["password", { password: "short" }, "La contraseña debe tener al menos 8 caracteres"],
     ["password", { password: "a".repeat(129) }, "La contraseña debe tener al menos 8 caracteres"],
-    [
-      "acceptedTerms",
-      { acceptedTerms: undefined },
-      "Acepta los Términos y la Política de privacidad",
-    ],
   ])("rejects an invalid %s (%j)", (field, override, message) => {
     const result = registerSchema.safeParse({ ...valid, ...override });
 
@@ -139,5 +133,46 @@ describe("sessionUserSchema", () => {
 
   it.each(["u1", 42])("rejects an id that is not a UUID (%j)", (id) => {
     expect(sessionUserSchema.safeParse({ ...user, id }).success).toBe(false);
+  });
+});
+
+describe("loginSchema password limit", () => {
+  it("rejects a password longer than the backend accepts", () => {
+    const result = loginSchema.safeParse({ email: "a@b.co", password: "a".repeat(129) });
+
+    expect(fieldErrorsOf(result)).toEqual({ password: ["Revisa los datos e intenta de nuevo."] });
+  });
+
+  it("accepts a 128-character password", () => {
+    expect(loginSchema.safeParse({ email: "a@b.co", password: "a".repeat(128) }).success).toBe(
+      true,
+    );
+  });
+});
+
+describe("registerSchema city", () => {
+  it("accepts any non-empty zone: the backend checks it against GET /zones", () => {
+    const result = registerSchema.safeParse({
+      fullName: "Camila Torres",
+      email: "camila@renest.app",
+      city: "Usaquén, Bogotá",
+      password: "secret123",
+    });
+
+    expect(result.data?.city).toBe("Usaquén, Bogotá");
+    expect(result.data).not.toHaveProperty("acceptedTerms");
+  });
+});
+
+describe("zonesSchema", () => {
+  it("accepts a non-empty list of zone names", () => {
+    expect(zonesSchema.parse(["Condesa, CDMX", "Miraflores, Lima"])).toEqual([
+      "Condesa, CDMX",
+      "Miraflores, Lima",
+    ]);
+  });
+
+  it.each([[[]], [["Condesa, CDMX", ""]], [["  "]], [[1]], [{}]])("rejects %j", (zones) => {
+    expect(zonesSchema.safeParse(zones).success).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import {
   type LoginInput,
   type RegisterInput,
   type SessionUser,
+  zonesSchema,
 } from "./schemas";
 
 /** `POST /auth/login`. 401 for an unknown email and for a wrong password alike. */
@@ -38,4 +39,13 @@ export function getCurrentUser(): Promise<SessionUser> {
     onUnauthorized: "throw",
     cache: "no-store",
   });
+}
+
+/**
+ * `GET /zones` (public). Not cached: it's one small request per visit to `/register`, a stale
+ * copy could offer a zone the backend has since dropped (it validates `city` against this
+ * list), and a Data Cache entry would be keyed by the forwarded client IP anyway.
+ */
+export function getZones(): Promise<string[]> {
+  return apiFetch("/zones", { schema: zonesSchema, auth: false, cache: "no-store" });
 }

@@ -12,10 +12,11 @@ import { login, register } from "./api";
 import {
   AUTH_ERROR_MESSAGES,
   getAuthErrorKind,
+  isFieldRejected,
   type LoginState,
   type RegisterState,
 } from "./form-state";
-import { loginSchema, registerSchema, type AuthToken } from "./schemas";
+import { AUTH_FIELD_MESSAGES, loginSchema, registerSchema, type AuthToken } from "./schemas";
 
 /** A text field from the form, or `undefined` when it's missing (or a file). */
 function readText(formData: FormData, name: string): string | undefined {
@@ -57,14 +58,12 @@ export async function registerAction(
     city: readText(formData, "city"),
     phoneE164: readText(formData, "phoneE164"),
     password: readText(formData, "password"),
-    acceptedTerms: readText(formData, "acceptedTerms"),
   };
   const values = {
     fullName: raw.fullName ?? "",
     email: raw.email ?? "",
     city: raw.city ?? "",
     phoneE164: raw.phoneE164 ?? "",
-    acceptedTerms: raw.acceptedTerms === "on",
   };
 
   const result = registerSchema.safeParse(raw);
@@ -83,6 +82,16 @@ export async function registerAction(
         status: "error",
         fieldErrors: { email: [AUTH_ERROR_MESSAGES.emailTaken] },
         values,
+      };
+    }
+    // A zone the backend no longer offers (it validates `city` against `GET /zones`). The value
+    // is cleared: kept, it would match no option and the select would silently show the first
+    // zone instead of the placeholder.
+    if (isFieldRejected(error, "city")) {
+      return {
+        status: "error",
+        fieldErrors: { city: [AUTH_FIELD_MESSAGES.city] },
+        values: { ...values, city: "" },
       };
     }
     return { status: "error", formError: AUTH_ERROR_MESSAGES[kind], fieldErrors: {}, values };
