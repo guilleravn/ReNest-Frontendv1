@@ -42,8 +42,29 @@ built.** Add a rule here in the same slice that introduces it.
   that only works at the width it was built at. Typical causes: a fixed `w-[…px]`, a
   `col-span-*` or `col-start-*` that was not reset, or a missing `min-w-0`.
 
+## UI states: loading, error and empty
+
+Established by `/listings` (BO-40/BO-41) and `/feed` (BO-45); followed by every data view since.
+
+- **Loading:** either the segment's `loading.tsx`, or a `<Suspense fallback={<XSkeleton />}>`
+  placed as close as possible to the slow fetch when only part of the page needs it (e.g. the
+  result grid in a `<Suspense key={filters}>`, keyed so changing a filter shows the skeleton
+  again instead of stale results). The skeleton matches the final content's dimensions and layout
+  (no shift), is `aria-busy` + `aria-live="polite"` with a `sr-only` status text, and its
+  placeholder rows are `aria-hidden`. Precedent: `ListingsSkeleton`, `FeedSkeleton`.
+- **Error:** `error.tsx` per segment (a Client Component). Copy stays generic — never
+  `error.message` or the HTTP status — because Server Component errors reach the client without
+  them in production. A `role="alert"` message plus a "Reintentar" button calling `retry()`.
+  Precedent: `src/app/(tabs)/listings/error.tsx`, `src/app/(tabs)/feed/error.tsx`.
+- **Empty:** a small, server-rendered, prop-driven component with copy specific to _why_ the list
+  is empty — never one generic "no results" string for every case when the active filters imply a
+  more specific message exists. `EmptyListings` varies by status (one case); `EmptyFeed` varies by
+  which filters are active (four cases: none, category only, search only, both — the combined case
+  is BO-6's "no items match" acceptance criterion). Precedent:
+  `src/features/listings/components/empty-listings.tsx`,
+  `src/features/feed/components/empty-feed.tsx`.
+
 ## TBD
 
 - Auth/route protection rules (once the login flow exists).
-- Loading/error/empty-state rules for data views.
 - Form validation and error-display rules.

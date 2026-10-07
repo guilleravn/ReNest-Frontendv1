@@ -74,9 +74,11 @@ plan of the login story and then record them in the Endpoints table below.
 
 Format when adding a new row:
 
-| Method | Path                                          | Auth | Request                                                         | Response schema (frontend)                                                                                                                                        | Used by                                          |
-| ------ | --------------------------------------------- | ---- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Yes  | `status` optional (omitted = all statuses, current seller only) | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See note below. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| Method | Path                                          | Auth | Request                                                                                                                                                                | Response schema (frontend)                                                                                                                                        | Used by                                          |
+| ------ | --------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Yes  | `status` optional (omitted = all statuses, current seller only)                                                                                                        | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See note below. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| GET    | `/categories`                                 | No   | —                                                                                                                                                                      | `categoriesResponseSchema` ([schemas.ts](../src/features/feed/schemas.ts)): `{ data: { id, name, slug }[] }`                                                      | `src/app/(tabs)/feed/page.tsx` (BO-45)           |
+| GET    | `/feed?category=<slug>&search=<substring>`    | No   | `category` optional (a category's `slug`, not its id); `search` optional (title substring, case-insensitive); `page`/`pageSize` optional, same defaults as `/listings` | `feedResponseSchema` ([schemas.ts](../src/features/feed/schemas.ts)): `{ data: Listing[], meta: { page, pageSize, total } }`. See note below.                     | `src/app/(tabs)/feed/page.tsx` (BO-45)           |
 
 Notes on `GET /listings`:
 
@@ -89,6 +91,27 @@ Notes on `GET /listings`:
 - The backend paginates (`page`, `pageSize`, default 20; `meta` also carries `page` and
   `pageSize`). There is no pagination UI yet: the page shows the first page only and says
   "Mostrando N de M" when `meta.total` is larger.
+
+Notes on `GET /feed` and `GET /categories`:
+
+- Both are unauthenticated (no seller/buyer-specific data). `apiFetch` is called with
+  `auth: false` for them.
+- `GET /feed`'s `Listing` item has the **same fields as `GET /listings`'s** (`id`, `title`,
+  `priceCents`, `photoUrl`, `status`, `createdAt`) — confirmed against ReNest-Backend's finished,
+  merged `[BE]` sub-issue. No `categoryId`/`sellerId`: an earlier plan draft described them, but
+  the real, committed backend doesn't return them, so `listingSchema` doesn't declare them either
+  (see NOTES.md 2026-10-07).
+- `Listing` is defined again in [`features/feed/schemas.ts`](../src/features/feed/schemas.ts)
+  rather than imported from `features/listings/schemas.ts`: feature folders don't import each
+  other's internals ([project-structure.md](conventions/project-structure.md)). The same goes for
+  `photo-url.ts`/`price.ts`, duplicated under `features/feed/`. Keep all of these in sync if the
+  backend shape changes; promoting the shared pieces to `src/lib/` is open for a future slice that
+  touches both features.
+- Category `id` format is not pinned down by the contract (`{ id: string; ... }`); the frontend
+  only round-trips it, never parses it, so `categorySchema` keeps `id` as a non-empty string
+  rather than assuming UUID.
+- `category` filters by a category's `slug` (e.g. `furniture`), not its `id`.
+- `search` matches the listing title, case-insensitively, as a substring.
 
 ## Providers and layouts
 
@@ -106,12 +129,13 @@ in the browser.
 ## Routes
 
 Paths mirror the reference app. Every page below is a placeholder (heading only) until its
-epic is built. Auth is "No" everywhere until the login flow and `src/proxy.ts` exist.
+epic is built, except where noted. Auth is "No" everywhere until the login flow and
+`src/proxy.ts` exist.
 
 | Route                           | Shell           | Back link (phone) | Description                                                            |
 | ------------------------------- | --------------- | ----------------- | ---------------------------------------------------------------------- |
 | `/`                             | none            | —                 | Redirects to `/feed`                                                   |
-| `/feed`                         | `(tabs)`        | —                 | Feed (Epic 1)                                                          |
+| `/feed`                         | `(tabs)`        | —                 | Feed: category chips + search (Epic 1, BO-45)                          |
 | `/items/[itemId]`               | `(detail)`      | `/feed`           | Item detail (Epic 1)                                                   |
 | `/items/[itemId]/contact`       | `(detail)`      | `/items/[itemId]` | Question to seller (Epic 1)                                            |
 | `/items/[itemId]/pickup`        | `(detail)`      | `/items/[itemId]` | Schedule pickup (Epic 2)                                               |

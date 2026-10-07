@@ -13,6 +13,85 @@ Format:
 
 ---
 
+## 2026-10-07 · BO-45 (QA fixes) · frontend-issue-implementer
+
+- **Resolved the 2026-10-06 schema-discrepancy note below**: no discrepancy. ReNest-Backend's
+  `[BE]` sub-issue is now finished and merged on this branch, and its real `GET /feed` returns
+  exactly `id, title, priceCents, photoUrl, status, createdAt` — no `categoryId`/`sellerId`.
+  Removed both optional fields from `listingSchema` (`src/features/feed/schemas.ts`) so it matches
+  `features/listings/schemas.ts`'s shape exactly, per the "never invent fields beyond the real
+  contract" convention. Updated `docs/architecture.md`'s "Notes on `GET /feed`" and the fixtures in
+  `schemas.test.ts`/`feed-item-card.test.tsx` accordingly.
+- Also fixed, from this QA pass: the debounce timer now checks the trimmed pending search against
+  the current `search` URL prop before calling `router.replace`, instead of trying to track "did
+  the user type" via refs — makes a stale timer a no-op instead of an overwrite (closes the
+  `--repeat-each` flake in `e2e/feed.spec.ts`'s category-toggle test, and the equivalent prod race
+  of typing then clicking a category chip within 400ms). `FeedSearch`'s local `search` state now
+  also re-syncs when the `search` prop changes for a reason other than its own debounce (browser
+  back/forward), via the "adjust state during render" pattern, instead of a one-time `useState`
+  seed. `feed-filters.ts`'s `parseCategory`/`parseSearch` now drop an invalid slug or an
+  over-100-char search instead of passing them to the backend and tripping the route's generic
+  `error.tsx`; `feed-search.tsx`'s input also got `maxLength={100}` to stop most of this at the
+  source.
+
+## 2026-10-06 · BO-45 · frontend-issue-implementer
+
+- **Schema discrepancy found against the live, in-progress backend:** the plan described
+  `GET /feed`'s `Listing` item as including `categoryId`/`sellerId`, but ReNest-Backend's actual
+  `[BE]` sub-issue (checked by running its real Docker stack while it was still mid-implementation,
+  uncommitted) currently returns the exact same fields as `GET /listings` — no `categoryId` or
+  `sellerId`. Rather than hard-failing every real response, `listingSchema` in
+  `src/features/feed/schemas.ts` keeps both fields **optional**: validates the current shape and a
+  future one that adds them. Nothing in the UI reads either field yet (no category badge or seller
+  snapshot in this slice). Revisit once BO's `[BE]` sub-issue is actually done.
+- **Feature-isolation tradeoff:** `project-structure.md` forbids a feature importing another
+  feature's internals, so `features/feed/` duplicates (rather than imports)
+  `features/listings/schemas.ts`'s `Listing`/`listingSchema` shape, plus the whole of
+  `photo-url.ts` and `price.ts` verbatim. Flagged as a candidate for promoting to `src/lib/` in a
+  future slice that's allowed to touch both feature folders (this one wasn't, per its owned-files
+  list).
+- **Found and fixed a real race condition**, not just a test flake: `FeedSearch`'s original
+  debounce effect depended on both `search` _and_ `category`, so clicking a category chip (a plain
+  `<Link>` navigation) would re-trigger the 400ms debounce timer too. If the user interacted again
+  within that window — e.g. clicking the same category chip a second time to clear it — the stale
+  timer could fire afterwards with its old closed-over `category` value and overwrite the URL the
+  user had just navigated to. Reproduced via `npx playwright test e2e/feed.spec.ts --repeat-each=8`
+  (~1 in 5–10 runs). Fixed by tracking `category` in a ref updated by its own effect, so only
+  typing (the `search` state) re-arms the debounce timer; the category ref is read at fire time
+  instead of being a dependency. If you touch `feed-search.tsx` again, re-run with `--repeat-each`
+  a few times before trusting a green run — a single pass doesn't catch this class of bug.
+- **Combined categories+results fetch, one `<Suspense key={category:search}>`:** `FeedContent`
+  fetches `getCategories()` and `getFeed()` together (`Promise.all`) and renders both the chip row
+  and the result grid, instead of giving categories their own (unkeyed) Suspense boundary. This
+  means every category/search change re-fetches the category list too (cheap, rarely changes) in
+  exchange for a simpler, single re-fetch story that exactly mirrors `/listings`'s
+  `<Suspense key={status}>` pattern instead of inventing a second one. `page.tsx` itself has no
+  top-level data await (only `searchParams`), so `loading.tsx` is mostly a safety net in practice —
+  the real "loading" UX comes from the inner `<Suspense fallback={<FeedSkeleton />}>`.
+- **Empty-state copy** (four cases, Spanish, server-rendered via `getEmptyFeedMessage` in
+  `empty-feed.tsx`): category+search → "No encontramos artículos que coincidan con tu búsqueda en
+  esta categoría." (BO-6's unhappy-path AC); search only → "No encontramos artículos que coincidan
+  con tu búsqueda."; category only → "No hay artículos en esta categoría por ahora."; neither (feed
+  genuinely empty, not reachable with the current seed) → "Aún no hay artículos publicados."
+- **Search debounce:** 400ms, per the plan. Implemented as a client-only leaf (`feed-search.tsx`)
+  using `useRouter().replace`; the field is uncontrolled-feeling but kept as local `useState` since
+  the UI must react to every keystroke (desired exception to "uncontrolled by default" in
+  forms-and-errors.md — that rule is about forms with a submit step, not live-filtering).
+- **Category chip toggle semantics** verified live against the real backend (BO-6's happy path +
+  deselect) and via `e2e/feed.spec.ts`: selecting the active category chip again links back to
+  `/feed` (or `/feed?search=...` if a search is active), clearing only the category.
+- Grid card design (`FeedItemCard`) has no category/condition/trust badges: the contract's
+  `Listing` item doesn't carry condition or trust-score fields yet (those are presumably later
+  Epic 1 sub-issues), so the card only shows photo, title and price — same information density as
+  `ListingCard`, adapted to a vertical grid layout instead of a row.
+- Verified manually at 1440/1024/768/375/320px (Playwright MCP, real backend) and via
+  `e2e/feed.spec.ts`'s 320px no-horizontal-scroll test; no issues found.
+- `e2e/feed.spec.ts` ran successfully against ReNest-Backend's real Docker stack (both `desktop`
+  and `mobile` projects, `npx playwright test` full suite green). One pre-existing flake unrelated
+  to this change surfaced once under `--repeat-each=3`
+  (`app-shell.spec.ts`'s tab-navigation test) and didn't reproduce when that file was re-run in
+  isolation — not something this slice touched or introduced.
+
 ## 2026-10-06 · BO-41 (PR #7 review) · frontend-qa-reviewer
 
 - `/listings` now follows the reference app's own "Mis artículos" screen, not `/purchases`: tabs
