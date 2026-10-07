@@ -1,8 +1,9 @@
+import { cookies } from "next/headers";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { SessionUser } from "@/features/auth/schemas";
-import { LOGIN_PATH } from "@/lib/auth/constants";
-import { safeRedirectPath, withNextParam } from "@/lib/auth/redirect-path";
+import { EXPIRED_HOP_COOKIE, EXPIRED_HOP_MAX_AGE_SECONDS } from "@/lib/auth/constants";
+import { decideExpiredAction } from "@/lib/auth/expired-decision";
 import { clearSessionCookie, getSession } from "@/lib/auth/session";
 
 /**
@@ -16,9 +17,15 @@ import { clearSessionCookie, getSession } from "@/lib/auth/session";
  * rejected because a legitimate redirect chain that starts on another site (a link from an
  * email to a protected page) is cross-site too, and refusing to clear there would loop
  * between `/login` and the protected page.
+ *
+ * Loop guard: if `next` answers 401 even though the session is valid, that page would send the
+ * user back here forever. The round trip is remembered in a short-lived cookie (see
+ * `decideExpiredAction`), not a query flag, so `next` stays clean and the mark can't be baked
+ * into a shared link.
  */
 export async function GET(request: NextRequest) {
   const next = request.nextUrl.searchParams.get("next");
+  const cookieStore = await cookies();
 
   let user: SessionUser | null | "unknown";
   try {
@@ -28,9 +35,25 @@ export async function GET(request: NextRequest) {
     user = "unknown";
   }
 
-  if (user === null) {
+  const decision = decideExpiredAction({
+    next,
+    user,
+    previousHop: cookieStore.get(EXPIRED_HOP_COOKIE)?.value,
+  });
+
+  if (decision.kind === "login") {
     await clearSessionCookie();
-    return NextResponse.redirect(new URL(withNextParam(LOGIN_PATH, next), request.url));
+  } else if (decision.kind === "continue") {
+    cookieStore.set(EXPIRED_HOP_COOKIE, decision.hop, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: EXPIRED_HOP_MAX_AGE_SECONDS,
+    });
+  } else {
+    // Reset the guard so a later retry gets a fresh round trip.
+    cookieStore.delete(EXPIRED_HOP_COOKIE);
   }
-  return NextResponse.redirect(new URL(safeRedirectPath(next), request.url));
+  return NextResponse.redirect(new URL(decision.to, request.url));
 }

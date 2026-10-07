@@ -156,6 +156,38 @@ test.describe("expired-session handler", () => {
     },
   );
 
+  signedInTest(
+    "stops a redirect loop when the same page comes back within the guard window",
+    async ({ page, context }) => {
+      await page.goto("/api/auth/expired?next=%2Flistings");
+      await expect(page).toHaveURL("/listings");
+
+      // The page would have bounced here again (401 despite a valid session).
+      await page.goto("/api/auth/expired?next=%2Flistings");
+
+      await expect(page).toHaveURL("/session-error");
+      await expect(page.getByRole("heading", { name: "Algo salió mal" })).toBeVisible();
+      expect(await getCookie(context, SESSION_COOKIE)).toBeDefined();
+
+      // The guard resets once it has tripped.
+      await page.goto("/api/auth/expired?next=%2Flistings");
+      await expect(page).toHaveURL("/listings");
+    },
+  );
+
+  signedInTest(
+    "a stale cookie still goes to login after a previous hop",
+    async ({ page, context }) => {
+      await page.goto("/api/auth/expired?next=%2Flistings");
+      await setBogusSession(context);
+
+      await page.goto("/api/auth/expired?next=%2Flistings");
+
+      await expect(page).toHaveURL("/login?next=%2Flistings");
+      expect(await getCookie(context, SESSION_COOKIE)).toBeUndefined();
+    },
+  );
+
   test("never sends the user back to a Route Handler", async ({ page, context }) => {
     await setBogusSession(context);
 

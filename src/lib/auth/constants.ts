@@ -21,3 +21,16 @@ export const EXPIRED_SESSION_PATH = "/api/auth/expired";
  * expired-session redirect needs it to bring the user back after signing in again.
  */
 export const PAGE_PATH_HEADER = "x-renest-page-path";
+
+/**
+ * Short-lived httpOnly cookie the expired-session handler sets when it sends a valid session
+ * back to `next`. Its value is that `next`; seeing the same one again within
+ * `EXPIRED_HOP_MAX_AGE_SECONDS` means the page keeps answering 401 despite a valid session.
+ */
+export const EXPIRED_HOP_COOKIE = "renest_expired_hop";
+
+/** How long the loop-guard cookie lives. */
+export const EXPIRED_HOP_MAX_AGE_SECONDS = 30;
+
+/** Page that explains a session round trip that didn't fix the page (the loop guard's exit). */
+export const SESSION_ERROR_PATH = "/session-error";
