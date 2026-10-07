@@ -48,4 +48,29 @@ export const signedInTest = test.extend({
   },
 });
 
+/** Samuel, the seeded seller whose fixed listings (one per status) the listings specs assert. */
+export const SEEDED_SELLER_EMAIL = "samuel@renest.test";
+
+/**
+ * Signed-in storage state of the seeded seller, written once per run by
+ * [seeded-seller.setup.ts](./seeded-seller.setup.ts) (the `setup` project). Once per run, not per
+ * worker: the backend allows 5 login attempts per IP + email per minute. Use it with
+ * `test.use({ storageState: SEEDED_SELLER_STATE_PATH })`.
+ */
+export const SEEDED_SELLER_STATE_PATH = "playwright/.auth/seeded-seller.json";
+
+/**
+ * The seed gives every account `SEED_USER_PASSWORD` (ReNest-Backend `.env`). Pass the same value
+ * to Playwright as `E2E_SEED_PASSWORD` (or `SEED_USER_PASSWORD`).
+ */
+export function readSeedPassword(): string {
+  const password = process.env.E2E_SEED_PASSWORD ?? process.env.SEED_USER_PASSWORD;
+  if (!password) {
+    throw new Error(
+      "Set E2E_SEED_PASSWORD to ReNest-Backend's SEED_USER_PASSWORD to sign in as the seeded seller.",
+    );
+  }
+  return password;
+}
+
 export { expect } from "@playwright/test";

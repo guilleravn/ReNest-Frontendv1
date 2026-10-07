@@ -123,12 +123,13 @@ message in local state.
 
 ### Endpoints
 
-| Method | Path             | Auth   | Request                                                                             | Response schema (frontend)                                                 | Used by                                |
-| ------ | ---------------- | ------ | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------- |
-| POST   | `/auth/login`    | Public | `{ email, password }`                                                               | `authTokenSchema` `{ accessToken, expiresAt }`                             | `loginAction`                          |
-| POST   | `/auth/register` | Public | `{ fullName, email, city, phoneE164: string \| null, password }` (`registerSchema`) | `authTokenSchema` (signs the user in)                                      | `registerAction`                       |
-| GET    | `/auth/me`       | Bearer | —                                                                                   | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }` | `getSession()` (layouts, account menu) |
-| GET    | `/zones`         | Public | —                                                                                   | `zonesSchema` (non-empty `string[]`)                                       | `/register` page (zone options)        |
+| Method | Path                                          | Auth   | Request                                                                             | Response schema (frontend)                                                                                                                                         | Used by                                          |
+| ------ | --------------------------------------------- | ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| POST   | `/auth/login`                                 | Public | `{ email, password }`                                                               | `authTokenSchema` `{ accessToken, expiresAt }`                                                                                                                     | `loginAction`                                    |
+| POST   | `/auth/register`                              | Public | `{ fullName, email, city, phoneE164: string \| null, password }` (`registerSchema`) | `authTokenSchema` (signs the user in)                                                                                                                              | `registerAction`                                 |
+| GET    | `/auth/me`                                    | Bearer | —                                                                                   | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }`                                                                                         | `getSession()` (layouts, account menu)           |
+| GET    | `/zones`                                      | Public | —                                                                                   | `zonesSchema` (non-empty `string[]`)                                                                                                                               | `/register` page (zone options)                  |
+| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Bearer | `status` optional (omitted = all statuses, current seller only)                     | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See notes below. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
 
 Statuses the UI handles: any other 4xx (e.g. a 400) → "Revisa los datos e intenta de nuevo."; 5xx
 or an unreachable backend → "No pudimos conectar con ReNest. Intenta de nuevo.".
@@ -148,6 +149,18 @@ or an unreachable backend → "No pudimos conectar con ReNest. Intenta de nuevo.
 - `expiresAt` is ISO 8601 UTC. The backend strips spaces, hyphens, dots and parentheses
   from the phone and then requires `^\+[1-9]\d{7,14}$`; `registerSchema` does the same, and sends
   an empty phone as `null`.
+
+Notes on `GET /listings`:
+
+- `Listing.photoUrl` is nullable and, despite the name, currently a bare storage key (e.g.
+  `"listings/<id>/photo-0.jpg"`), not an absolute URL: there's no public bucket/CDN yet (see
+  "Known gaps" in CLAUDE.md). The frontend treats anything that isn't a parseable absolute URL as
+  "no photo" ([photo-url.ts](../src/features/listings/photo-url.ts)). Pending a backend contract
+  decision (full URL vs. storage key + media base URL).
+- `priceCents` is whole US dollars in cents (backend `business-invariants.md`, 2026-10-06).
+- The backend paginates (`page`, `pageSize`, default 20; `meta` also carries `page` and
+  `pageSize`). There is no pagination UI yet: the page shows the first page only and says
+  "Mostrando N de M" when `meta.total` is larger.
 
 ### Error boundary
 

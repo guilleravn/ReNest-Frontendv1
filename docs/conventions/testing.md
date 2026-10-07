@@ -20,6 +20,11 @@
   `storageState`; `workerAccount` gives its email/password). Sign up explicitly only in tests
   about sign-up, and in login tests (a fresh account each, so repeated logins don't hit the
   per-email limit of 5 attempts / 60 s). Never forge `X-Forwarded-For`.
+- Tests that need the seed's fixed data (e.g. My Listings' one listing per status) use
+  `test.use({ storageState: SEEDED_SELLER_STATE_PATH })`: the `setup` project signs in once per run
+  as the seeded seller Samuel (once, because of the per-email login limit). Run the suite with
+  `E2E_SEED_PASSWORD` set to ReNest-Backend's `SEED_USER_PASSWORD`
+  (`E2E_SEED_PASSWORD=… npm run test:e2e`).
 - **CI doesn't run the e2e suite** (it needs the real backend). Until CI e2e is reinstated, run
   `npm run test:e2e` locally against ReNest-Backend's `npm run docker:up` before merging any PR
   that touches user flows, and say so in the PR.
