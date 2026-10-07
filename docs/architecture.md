@@ -133,13 +133,14 @@ message in local state.
 
 ### Endpoints
 
-| Method | Path                                          | Auth   | Request                                                                             | Response schema (frontend)                                                                                                                                         | Used by                                          |
-| ------ | --------------------------------------------- | ------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| POST   | `/auth/login`                                 | Public | `{ email, password }`                                                               | `authTokenSchema` `{ accessToken, expiresAt }`                                                                                                                     | `loginAction`                                    |
-| POST   | `/auth/register`                              | Public | `{ fullName, email, city, phoneE164: string \| null, password }` (`registerSchema`) | `authTokenSchema` (signs the user in)                                                                                                                              | `registerAction`                                 |
-| GET    | `/auth/me`                                    | Bearer | —                                                                                   | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }`                                                                                         | `getSession()` (layouts, account menu)           |
-| GET    | `/zones`                                      | Public | —                                                                                   | `zonesSchema` (non-empty `string[]`)                                                                                                                               | `/register` page (zone options)                  |
-| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Bearer | `status` optional (omitted = all statuses, current seller only)                     | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See notes below. | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| Method | Path                                          | Auth   | Request                                                                                          | Response schema (frontend)                                                                                                                                                                                                                                | Used by                                          |
+| ------ | --------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| POST   | `/auth/login`                                 | Public | `{ email, password }`                                                                            | `authTokenSchema` `{ accessToken, expiresAt }`                                                                                                                                                                                                            | `loginAction`                                    |
+| POST   | `/auth/register`                              | Public | `{ fullName, email, city, phoneE164: string \| null, password }` (`registerSchema`)              | `authTokenSchema` (signs the user in)                                                                                                                                                                                                                     | `registerAction`                                 |
+| GET    | `/auth/me`                                    | Bearer | —                                                                                                | `sessionUserSchema` `{ id, email, fullName, city, phoneE164, isVerified }`                                                                                                                                                                                | `getSession()` (layouts, account menu)           |
+| GET    | `/zones`                                      | Public | —                                                                                                | `zonesSchema` (non-empty `string[]`)                                                                                                                                                                                                                      | `/register` page (zone options)                  |
+| GET    | `/listings?status=ACTIVE\|PENDING\|COMPLETED` | Bearer | `status` optional (omitted = all statuses, current seller only)                                  | `listingsResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: Listing[], meta: { total } }`; `400` on an invalid status. See notes below.                                                                                        | `src/app/(tabs)/listings/page.tsx` (BO-41/BO-40) |
+| GET    | `/feed?q=&page=&pageSize=`                    | Bearer | All optional: `q` title search (trimmed, ≤ 120 chars), `page` ≥ 1, `pageSize` 1–100 (default 20) | `feedResponseSchema` ([schemas.ts](../src/features/listings/schemas.ts)): `{ data: [{ id, title, priceCents, photoUrl, category: { slug, name }, publishedAt }], meta: { page, pageSize, total } }`; `400` on invalid or unknown params. See notes below. | `src/app/(tabs)/feed/page.tsx` (BO-43/BO-5)      |
 
 Statuses the UI handles: any other 4xx (e.g. a 400) → "Revisa los datos e intenta de nuevo."; 5xx
 or an unreachable backend → "No pudimos conectar con ReNest. Intenta de nuevo.".
@@ -171,6 +172,22 @@ Notes on `GET /listings`:
 - The backend paginates (`page`, `pageSize`, default 20; `meta` also carries `page` and
   `pageSize`). There is no pagination UI yet: the page shows the first page only and says
   "Mostrando N de M" when `meta.total` is larger.
+
+Notes on `GET /feed`:
+
+- Shared with the backend work package of BO-5 (BO-43 on this side). Every ACTIVE listing,
+  including the current user's own. `q` is a case-insensitive title search; the backend trims it
+  and rejects more than 120 characters or any control character (U+0000–U+001F, U+007F), so the
+  frontend strips, trims and caps it the same way
+  ([feed-search.ts](../src/features/listings/feed-search.ts)) and only sends `q` when non-blank.
+- `400` on an invalid `q`/`page`/`pageSize` **or any unknown param**: never forward page URL
+  params blindly.
+- This row is the **base contract** (BO-5). `category` arrives with BO-6 (PR
+  guilleravn/ReNest-Frontend#10 rebases on top of BO-5 and adds the category chips and the
+  `category` param to `getFeed`). Until then `?category=` is kept in the page URL by
+  `buildFeedSearchHref` (search, clear, "Limpiar búsqueda") but never sent to `GET /feed`.
+- `photoUrl` and `priceCents`: same caveats as `GET /listings` above. Pagination: same as above
+  ("Mostrando N de M artículos").
 
 ### Error boundary
 
@@ -204,7 +221,7 @@ by `src/proxy.ts`, and by `requireSession()` in the `(tabs)`/`(detail)` layouts)
 | Route                           | Shell         | Auth   | Back link (phone) | Description                                                            |
 | ------------------------------- | ------------- | ------ | ----------------- | ---------------------------------------------------------------------- |
 | `/`                             | none          | Yes    | —                 | Redirects to `/feed`                                                   |
-| `/feed`                         | `(tabs)`      | Yes    | —                 | Feed (Epic 1)                                                          |
+| `/feed`                         | `(tabs)`      | Yes    | —                 | Feed (Epic 1); title search in `?q=`                                   |
 | `/items/[itemId]`               | `(detail)`    | Yes    | `/feed`           | Item detail (Epic 1)                                                   |
 | `/items/[itemId]/contact`       | `(detail)`    | Yes    | `/items/[itemId]` | Question to seller (Epic 1)                                            |
 | `/items/[itemId]/pickup`        | `(detail)`    | Yes    | `/items/[itemId]` | Schedule pickup (Epic 2)                                               |

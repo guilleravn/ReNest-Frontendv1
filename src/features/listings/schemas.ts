@@ -22,3 +22,27 @@ export const listingsResponseSchema = z.object({
 });
 
 export type ListingsResponse = z.infer<typeof listingsResponseSchema>;
+
+/** An ACTIVE listing as shown on the home feed, from `GET /feed` (see docs/architecture.md). */
+export const feedListingSchema = z.object({
+  id: z.uuid(),
+  title: z.string(),
+  priceCents: z.number().int().nonnegative(),
+  // Same caveat as `listingSchema.photoUrl`: a bare storage key or null, not a URL yet.
+  photoUrl: z.string().nullable(),
+  category: z.object({ slug: z.string(), name: z.string() }),
+  publishedAt: z.iso.datetime({ offset: true }),
+});
+
+export type FeedListing = z.infer<typeof feedListingSchema>;
+
+export const feedResponseSchema = z.object({
+  data: z.array(feedListingSchema),
+  meta: z.object({
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+  }),
+});
+
+export type FeedResponse = z.infer<typeof feedResponseSchema>;

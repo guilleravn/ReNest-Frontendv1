@@ -13,6 +13,95 @@ Format:
 
 ---
 
+## 2026-10-07 · BO-43 (merge of develop with A9 / BO-39) · main session
+
+- A9 also moved `icons.tsx` to `components/ui/`: both icon sets are kept (BO-5's search, close
+  and package-search; A9's shield-check, circle-check, log-out, chevron-down). `CloseIcon` was
+  identical on both sides. `app-header.tsx` takes A9's imports (`UserIcon` moved to the account
+  menu).
+- `/feed` is now a protected route: `e2e/feed.spec.ts` signs in as the seeded seller
+  (`SEEDED_SELLER_STATE_PATH`), like `listings.spec.ts`.
+- The (tabs) layout now always mounts the flash Toast's `role="status"` region, outside `<main>`.
+  The feed's persistent status region is still the only one inside `<main>`; the feed e2e scopes
+  its status locator to `<main>` (`feedStatus`).
+- `docs/architecture.md`: the `GET /feed` row joins A9's endpoints table (auth `Bearer`); the
+  feed notes sit before A9's "Error boundary" section; the routes table keeps A9's Auth column and
+  `/feed`'s `?q=`.
+
+## 2026-10-07 · BO-43 (PR #9 review fixes) · frontend-issue-implementer
+
+- `SearchField` is a `useReducer`. Instead of one `expectedQuery` it keeps `pendingQueries`
+  (searches it asked for that haven't landed, oldest first): an older own search that lands after
+  a newer Enter/× is recognised as its own (dropped with everything older), so it can't flash. Any
+  `?q=` change not in that list is an outside navigation: it syncs the input, clears the list and
+  bumps `outsideChangeCount`, whose layout effect cancels the pending debounce (the "type, then
+  click the logo within 300 ms" bug). The URL params are read through a ref (updated in a layout
+  effect) when the search is applied, not from the keystroke's render.
+- Search errors: Next 16.3 has a stable component-level boundary, `catchError` from `next/error`
+  (`retry()` = `router.refresh()` + reset in a transition), so `components/ui/error-boundary.tsx`
+  wraps it instead of a hand-written class. It wraps the results, `key={q}`.
+- **Deviation:** the status region has no client boundary. `FeedStatus` catches the `getFeed`
+  failure on the server (`unstable_rethrow` first) and announces `FEED_ERROR_MESSAGE` as text. A
+  client boundary there would stay stuck on the error text after a successful "Reintentar",
+  because retry only resets the results' boundary; the server text is recomputed on every refresh.
+  Still one `role="status"`; the visible error is the `role="alert"` in `ErrorState`.
+- `feed/error.test.tsx` lost its "keeps the page heading" case: the `<h1>` moved to
+  `feed/layout.tsx`, covered by `feed/layout.test.tsx` and `e2e/app-shell.spec.ts`.
+- The error → clear/retry → feed recovery isn't in the e2e suite: the only way to make
+  `GET /feed` fail is stopping the API container, which breaks the parallel specs. It was checked
+  by hand that way (desktop, production build): the error shows under a usable search field, the
+  status region says the error, "Reintentar" recovers once the API is back (results and status),
+  and clearing the search recovers too. Unit tests cover the boundary (retry, reset on key).
+- `buildFeedSearchHref` drops `page` only when `q` actually changes (a no-op search keeps it).
+- E2E: the debounce/logo spec uses Playwright's clock (`pauseAt` → type → click → `runFor` →
+  `resume`); it fails against the previous `SearchField`. Full run: 50/50 (desktop + mobile).
+
+## 2026-10-06 · BO-43 (QA changes requested) · frontend-issue-implementer
+
+- `SearchField` now follows `?q=` after navigations it didn't make (home link, back/forward),
+  using the "adjust state during render" pattern with two states: the previous `defaultQuery`
+  (to notice a change) and the query the field expects next (its own last request, or the last
+  synced value). Its own search landing never overwrites what the user is still typing, and its
+  own clear doesn't flash the old text back while the request is in flight. No `key={q}` remount,
+  so focus is kept.
+- Removed `outline-none` from the search input: in Tailwind 4 it sets
+  `--tw-outline-style: none`, which also cancelled the `focus-visible:outline-2` ring.
+- Screen-reader announcements: one persistent `role="status"` (`sr-only`) region on the feed page,
+  outside the keyed results `<Suspense>`, holds its own `<Suspense key={q}>` whose text goes
+  "Cargando artículos…" → "N artículos encontrados." / the no-match or empty-feed copy
+  (`feed-announcement.ts`, `FeedStatus`). The visible count, `FeedSkeleton` and `EmptyFeed` are
+  no longer live regions. The wording deliberately differs from the visible "N resultados" so
+  text queries don't match both. `getFeed` is wrapped in React `cache()` (keyed on the `q`
+  string), so the two boundaries share one backend call per request.
+- E2E now run: `feed.spec.ts` + `app-shell.spec.ts`, 36/36 (desktop + mobile), against a
+  production build on :3001 and the backend Docker API with its feed seed.
+
+## 2026-10-06 · BO-43 (BO-5) · frontend-issue-implementer
+
+- `feed/error.tsx` also renders the page `<h1>`: the segment's error boundary replaces the whole
+  page, and `e2e/app-shell.spec.ts` expects that heading on `/feed` even without a backend. The
+  search field isn't shown in the error state (retry reloads the same `?q=`).
+- `parseSearchQuery` truncates to 120 chars instead of dropping the value: the backend 400s above
+  120 and that would land on the error page; the input also has `maxLength={120}`.
+- `getFeed` only forwards `q`. The backend rejects unknown params with 400, so the `?category=`
+  that `buildFeedSearchHref` keeps in the URL must not reach `GET /feed` until C2 agrees it.
+- Count copy is singular for one result ("1 resultado"), as in the reference. "N" is
+  `meta.total`; the count is not shown on the empty state (the reference doesn't either).
+- (Re-sync part superseded: see the "QA changes requested" entry above.) `SearchField` has one
+  `useEffect`, only to clear the pending debounce timer on unmount, so a
+  late `router.replace` can't pull the user back to `/feed` after they navigate away. The input
+  is not re-synced with `?q=` on back/forward navigation (would need deriving state from props);
+  the results do follow the URL. Flag it if product wants that.
+- Card photo `alt=""` (decorative, title is in the link name), unlike the reference which uses
+  the title as alt and so reads it twice. No location line or condition/verified badges on cards:
+  not in the `GET /feed` contract.
+- `SearchField` tests: Vitest fake timers need `shouldAdvanceTime: true` (Testing Library waits on
+  a real `setTimeout(0)` after each interaction and only flushes Jest's fake timers).
+- (Superseded: e2e now run, see above.) E2E `e2e/feed.spec.ts` assumes the backend seed's ACTIVE listings include "Leather armchair",
+  "Oak armchair" and "Desk lamp", and that "armchair" matches exactly 2 titles. Not run yet: the
+  backend's feed seed wasn't in place. UI was checked against a local mock at 1440/1024/768/375/
+  320px (no horizontal scroll) and in both themes.
+
 ## 2026-10-07 · BO-39 (review follow-ups #2, #3) · frontend-issue-implementer
 
 - **Loop guard on `/api/auth/expired`.** When a valid session is sent on to `next`, the handler

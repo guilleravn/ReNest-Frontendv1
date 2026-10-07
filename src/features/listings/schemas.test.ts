@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { listingsResponseSchema, listingSchema } from "./schemas";
+import {
+  feedListingSchema,
+  feedResponseSchema,
+  listingsResponseSchema,
+  listingSchema,
+} from "./schemas";
 
 const validListing = {
   id: "123e4567-e89b-12d3-a456-426614174000",
@@ -66,5 +71,65 @@ describe("listingsResponseSchema", () => {
 
   it("rejects a response missing meta", () => {
     expect(listingsResponseSchema.safeParse({ data: [] }).success).toBe(false);
+  });
+});
+
+const validFeedListing = {
+  id: "123e4567-e89b-12d3-a456-426614174000",
+  title: "Leather armchair",
+  priceCents: 24000,
+  photoUrl: null,
+  category: { slug: "furniture", name: "Muebles" },
+  publishedAt: "2026-10-06T00:00:00.000Z",
+};
+
+describe("feedListingSchema", () => {
+  it("accepts a well-formed feed listing", () => {
+    expect(feedListingSchema.safeParse(validFeedListing).success).toBe(true);
+  });
+
+  it("accepts a bare storage key as photoUrl", () => {
+    const result = feedListingSchema.safeParse({
+      ...validFeedListing,
+      photoUrl: "listings/123/photo-0.jpg",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a listing without a category", () => {
+    const result = feedListingSchema.safeParse({ ...validFeedListing, category: undefined });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects a non-ISO publishedAt", () => {
+    const result = feedListingSchema.safeParse({ ...validFeedListing, publishedAt: "yesterday" });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("feedResponseSchema", () => {
+  it("accepts a page of results with full meta", () => {
+    const result = feedResponseSchema.safeParse({
+      data: [validFeedListing],
+      meta: { page: 1, pageSize: 20, total: 1 },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an empty page (no matches)", () => {
+    const result = feedResponseSchema.safeParse({
+      data: [],
+      meta: { page: 1, pageSize: 20, total: 0 },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects meta without pagination fields", () => {
+    expect(feedResponseSchema.safeParse({ data: [], meta: { total: 0 } }).success).toBe(false);
   });
 });

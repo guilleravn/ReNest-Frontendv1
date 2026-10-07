@@ -1,10 +1,11 @@
 // Inline copies of the reference app's icons (Lucide house/shopping-bag/user/shield-check/
-// circle-check/chevron-down/x/log-out, Ionicons pricetags/chevron-back), so the app doesn't
-// pull in an icon library. All decorative.
+// circle-check/chevron-down/x/log-out/search/package-search, Ionicons pricetags/chevron-back), so
+// the app doesn't pull in an icon library. All decorative.
 
 type IconProps = React.ComponentProps<"svg">;
 
-function StrokeIcon({ strokeWidth = 2, children, ...props }: IconProps) {
+/** 24×24 outline icon in the Lucide style; build new Lucide copies on it. */
+export function StrokeIcon({ strokeWidth = 2, children, ...props }: IconProps) {
   return (
     <svg
       {...props}
@@ -80,6 +81,15 @@ export function ChevronBackIcon(props: IconProps) {
   );
 }
 
+export function SearchIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="m21 21-4.34-4.34" />
+      <circle cx="11" cy="11" r="8" />
+    </StrokeIcon>
+  );
+}
+
 export function ShieldCheckIcon(props: IconProps) {
   return (
     <StrokeIcon {...props}>
@@ -103,6 +113,19 @@ export function CloseIcon(props: IconProps) {
     <StrokeIcon {...props}>
       <path d="M18 6 6 18" />
       <path d="m6 6 12 12" />
+    </StrokeIcon>
+  );
+}
+
+export function PackageSearchIcon(props: IconProps) {
+  return (
+    <StrokeIcon strokeWidth={1.5} {...props}>
+      <path d="M12 22V12" />
+      <path d="M20.27 18.27 22 20" />
+      <path d="M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559" />
+      <path d="M3.29 7 12 12l8.71-5" />
+      <path d="m7.5 4.27 8.997 5.148" />
+      <circle cx="18.5" cy="16.5" r="2.5" />
     </StrokeIcon>
   );
 }
