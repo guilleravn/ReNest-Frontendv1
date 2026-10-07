@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { ChevronBackIcon, PriceTagsIcon } from "@/components/layout/icons";
+import { ChevronBackIcon, PriceTagsIcon } from "@/components/ui/icons";
 
 import { LISTING_STATUS_LABELS } from "../listing-status";
 import { isRenderablePhotoUrl } from "../photo-url";

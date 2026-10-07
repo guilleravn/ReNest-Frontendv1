@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ChevronBackIcon } from "@/components/ui/icons";
+
 import { getBackHref } from "./back-href";
-import { ChevronBackIcon } from "./icons";
 
 /** Phone-only back link in the header of detail pages; desktop uses the logo instead. */
 export function BackLink() {

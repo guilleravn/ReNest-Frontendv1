@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { HouseIcon, PriceTagsIcon } from "@/components/ui/icons";
+
 import { CountBadge } from "./count-badge";
-import { HouseIcon, PriceTagsIcon } from "./icons";
 
 type TabNavProps = {
   /** The seller's listings with a sale in progress; undefined while unknown. */

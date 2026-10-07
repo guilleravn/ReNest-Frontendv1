@@ -42,8 +42,32 @@ built.** Add a rule here in the same slice that introduces it.
   that only works at the width it was built at. Typical causes: a fixed `w-[…px]`, a
   `col-span-*` or `col-start-*` that was not reset, or a missing `min-w-0`.
 
+## INV-5: Routes are protected optimistically; the session has one owner
+
+- **Requires:** Every route except `/login` and `/register` requires a session. `src/proxy.ts`
+  redirects by the `renest_token` cookie's **presence** only (no backend call, no token
+  decoding): it's a UX shortcut, never the authorization. The backend authorizes every request,
+  and a rejected token sends the user through `/api/auth/expired?next=<page>` (clears the
+  cookie only if the backend rejects it, so a cross-site link can't sign anyone out) to
+  `/login?next=<page>`. Pages, layouts and actions read the session **only** through
+  [src/lib/auth/session.ts](../../src/lib/auth/session.ts) (`getSession()`/`requireSession()`),
+  which is also the only module that writes or deletes the cookie; `apiFetch` reads it only to
+  attach the Bearer header. A `next` redirect target is always re-validated on the server with
+  `safeRedirectPath()` (internal page paths only, never `/api/*`). Layouts don't re-render on
+  client navigation within their group, so a **page that loads private data calls
+  `requireSession()` itself** (or relies on `apiFetch`'s 401 redirect), instead of trusting
+  its layout's check.
+- **Protects:** User data and actions (the backend stays the single authority even if the proxy
+  matcher changes or a Server Action is called directly), against open redirects through
+  `next`, and the swap to another auth provider (one module changes).
+- **Fails as:** A page that trusts the proxy and renders private data without the backend
+  checking the token; a component or feature reading `cookies().get("renest_token")` itself;
+  a redirect to `//evil.com` after login; a stale cookie that loops between `/login` and `/feed`;
+  private data rendered after a client navigation because only the layout checked the session.
+
 ## TBD
 
-- Auth/route protection rules (once the login flow exists).
-- Loading/error/empty-state rules for data views.
+- Loading/error/empty-state rules for data views. (An app-wide fallback exists already:
+  `src/app/error.tsx`, see architecture.md "Error boundary". Per-view rules come with the first
+  data views.)
 - Form validation and error-display rules.

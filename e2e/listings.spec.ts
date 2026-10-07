@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Runs against ReNest-Backend's Docker stack (`npm run docker:up` in ../ReNest-Backend), whose
+import { SEEDED_SELLER_STATE_PATH } from "./fixtures";
+
+test.use({ storageState: SEEDED_SELLER_STATE_PATH });
+
+// Runs against ReNest-Backend's Docker stack (`npm run docker:up` in ../ReNest-Backend), signed in
+// as the seeded seller (`SEEDED_SELLER_STATE_PATH`, needs E2E_SEED_PASSWORD), whose
 // seed gives the current seller exactly one listing per status. The empty and error states can't
 // be reached from here (the fetch runs on the server, out of `page.route`'s reach): they are
 // covered by the EmptyListings and error.tsx unit tests.

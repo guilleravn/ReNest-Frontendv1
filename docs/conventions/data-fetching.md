@@ -37,6 +37,10 @@ that JavaScript cannot read, so every backend call happens on the Next.js server
 | Client-side query    | `useQuery` → Route Handler in `src/app/api/...` → `apiFetch` (only when the data must refetch on the client; otherwise fetch on the server and pass props) |
 
 - ✅ Every `apiFetch` call passes a `schema` (INV-2). ❌ `as Listing` over network data.
+- ✅ A page that loads private data calls `requireSession()` from `lib/auth/session.ts` itself
+  (or relies on `apiFetch`'s 401 redirect). ❌ Trusting the `(tabs)`/`(detail)` layout's check:
+  layouts don't re-render on client navigation within their group (INV-5). The backend
+  authorizes every call anyway; this keeps the UI from rendering for a dead session.
 - ❌ Invented endpoints or response shapes: if it isn't in [architecture.md](../architecture.md),
   ask.
 - The backend base URL is `API_URL` (server-only env var), read via `serverEnv()` in
