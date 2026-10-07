@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { ShoppingBagIcon, UserIcon } from "@/components/ui/icons";
+
 import { BackLink } from "./back-link";
 import { CountBadge } from "./count-badge";
-import { ShoppingBagIcon, UserIcon } from "./icons";
 
 type AppHeaderProps = {
   /** The buyer's purchases with a scheduled pickup; undefined while unknown. */

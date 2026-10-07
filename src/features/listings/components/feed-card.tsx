@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { PriceTagsIcon } from "@/components/layout/icons";
+import { PriceTagsIcon } from "@/components/ui/icons";
 
 import { isRenderablePhotoUrl } from "../photo-url";
 import { formatPriceCents } from "../price";

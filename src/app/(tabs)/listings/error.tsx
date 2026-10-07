@@ -1,5 +1,7 @@
 "use client";
 
+import { ErrorState } from "@/components/ui/error-state";
+
 type ListingsErrorProps = {
   error: Error & { digest?: string };
   retry: () => void;
@@ -12,17 +14,9 @@ type ListingsErrorProps = {
  */
 export default function ListingsError({ retry }: ListingsErrorProps) {
   return (
-    <div className="mt-8 flex flex-col items-center gap-4 text-center">
-      <p role="alert" className="text-foreground">
-        No pudimos cargar tus publicaciones. Revisa tu conexión e inténtalo de nuevo.
-      </p>
-      <button
-        type="button"
-        onClick={() => retry()}
-        className="bg-primary text-primary-foreground hover:bg-primary-hover focus-visible:outline-ring rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-      >
-        Reintentar
-      </button>
-    </div>
+    <ErrorState
+      message="No pudimos cargar tus publicaciones. Revisa tu conexión e inténtalo de nuevo."
+      onRetry={retry}
+    />
   );
 }
