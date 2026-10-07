@@ -13,6 +13,29 @@ Format:
 
 ---
 
+## 2026-10-07 · BO-39 (review follow-ups #2, #3) · frontend-issue-implementer
+
+- **Loop guard on `/api/auth/expired`.** When a valid session is sent on to `next`, the handler
+  sets `renest_expired_hop` (httpOnly, 30 s, path `/`, value = the `next` it redirected to). If
+  the same target comes back while the cookie is alive, it redirects to `/session-error` (a
+  page with the "Algo salió mal" copy) and deletes the cookie. A cookie rather than a query
+  flag because the `next` URL stays clean, a flag can't be baked into a shared link, and
+  `redirectToExpiredSession` needs no change. The decision is the pure `decideExpiredAction`
+  (`lib/auth/expired-decision.ts`), unit-tested. A 401 from `/auth/me` still clears the session
+  and goes to login regardless of the cookie; backend down still continues to `next` (its error
+  boundary shows, no redirect back). Side effect: a user who legitimately opens the same
+  expired link twice within 30 s sees the error page once; retrying works.
+- e2e covers the guard by revisiting the handler with a valid session (no always-401 page
+  exists yet), not by faking a backend 401.
+- Copy: `/register` subtitle is now "…comunidad de segunda mano de confianza."
+- `getAuthErrorKind` already maps 503 (the backend's "busy" argon2 queue) to `unavailable`
+  ("No pudimos conectar con ReNest. Intenta de nuevo."); the existing table test covers it.
+- Docs: "Deployment prerequisites" bullet in architecture.md (client IP / `TRUST_PROXY` /
+  Vercel shared secret).
+- **Backlog:** `isFieldRejected` relies on Nest's message format ("city must be …"); switch to a
+  structured error code when the backend offers one.
+- e2e is still not in CI (needs the Docker backend and `E2E_SEED_PASSWORD`).
+
 ## 2026-10-07 · A9 / BO-39 (merge of develop with BO-27/BO-40/BO-41) · main session
 
 - Merged `origin/develop` (My Listings) into `feat/a9-auth` instead of rebasing: the branch was

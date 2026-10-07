@@ -53,6 +53,12 @@ Browser ──(cookies)──► Next.js server (:3001) ──(Authorization: Be
   header in when it's **missing** (with the socket address; `next/dist/server/base-server.js`),
   so a client talking to Next directly could choose its own IP. With more than one proxy hop,
   revisit the rule. In local development the header is the loopback address.
+- **Deployment prerequisites (verify in the first deployment):** the forwarded client IP is only
+  trustworthy if Next.js is **not reachable directly** and sits behind **exactly one** proxy that
+  overwrites or appends `X-Forwarded-For` (otherwise a client can pick its IP and dodge the
+  backend's per-IP rate limits). Check it together with the backend's `TRUST_PROXY` setting
+  (it must trust exactly that one hop, i.e. this server) and, on Vercel, with the backend's
+  planned shared-secret header that proves the call comes from this server.
 - **Running a real backend locally:** `npm run dev` alone has nothing on `:3000`. For a real
   backend (needed for e2e tests that exercise actual flows, not mocks), go to `../ReNest-Backend`
   and run `npm run docker:up` — it builds and starts Postgres + the API in Docker on `:3000`. Stop
@@ -97,10 +103,14 @@ never exposes that token to browser JS:
    from an email to a protected page) is cross-site too, and refusing to clear there would loop
    between `/login` and the page. `next` is always validated with `safeRedirectPath()`, which
    rejects anything that resolves under `/api` (dot segments and `%2e` included).
-   **Residual risk:** the handler trusts `GET /auth/me` alone. If another endpoint answered 401
+   **Loop guard:** the handler trusts `GET /auth/me` alone. If another endpoint answered 401
    for a token that `/auth/me` still accepts (e.g. inconsistent guards), `apiFetch` would
-   redirect page → expired → page (cookie kept) in a loop. Keep the backend's token check the
-   same on every endpoint; if that ever can't hold, add a loop guard (e.g. a one-shot marker).
+   redirect page → expired → page (cookie kept) forever. So when it continues to `next`, the
+   handler sets the httpOnly cookie `renest_expired_hop` (30 s, value = that `next`); the same
+   `next` again within the window goes to `/session-error` and deletes the cookie (pure
+   `decideExpiredAction`, `lib/auth/expired-decision.ts`). A 401 from `/auth/me` still goes to
+   login regardless. Trade-off: opening the same expired link twice within 30 s shows the error
+   page once. Still keep the backend's token check the same on every endpoint.
 5. **Logout:** `logoutAction` (account menu in the header) deletes the cookie and redirects to
    `/login`. There is no backend logout endpoint (tokens are not revoked in the MVP).
 6. **Route protection:** [src/proxy.ts](../src/proxy.ts) (Next 16's replacement for
@@ -206,6 +216,7 @@ by `src/proxy.ts`, and by `requireSession()` in the `(tabs)`/`(detail)` layouts)
 | `/login`                        | `(auth)`      | Public | —                 | Login (A9); `?next=` = where to go after signing in                    |
 | `/register`                     | `(auth)`      | Public | —                 | Sign-up (A9); always lands on `/feed`                                  |
 | `/api/auth/expired`             | Route Handler | —      | —                 | Clears a cookie the backend rejects, back to `/login?next=`            |
+| `/session-error`                | none          | Yes    | —                 | "Algo salió mal" exit of the expired-session loop guard                |
 
 ### App shell
 
