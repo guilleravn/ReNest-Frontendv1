@@ -1,6 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, signedInTest as test } from "./fixtures";
 
 const isMobile = () => test.info().project.name === "mobile";
+
+// Every shell route needs a session: tests start signed in as the worker account (needs the real
+// backend, see auth.spec.ts). The login test clears it first.
 
 test("the root URL opens the feed", async ({ page }) => {
   await page.goto("/");
@@ -53,7 +56,8 @@ test("detail pages go back to their parent", async ({ page }) => {
   }
 });
 
-test("the login page renders outside the app shell", async ({ page }) => {
+test("the login page renders outside the app shell", async ({ page, context }) => {
+  await context.clearCookies();
   await page.goto("/login");
 
   await expect(page.getByRole("heading", { level: 1, name: "Inicia sesión" })).toBeVisible();

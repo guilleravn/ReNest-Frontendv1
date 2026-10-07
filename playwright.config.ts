@@ -14,8 +14,10 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile", use: { ...devices["Pixel 7"] } },
+    // Signs in as the seeded seller once per run (see e2e/fixtures.ts, SEEDED_SELLER_STATE_PATH).
+    { name: "setup", testMatch: /.*\.setup\.ts/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, dependencies: ["setup"] },
+    { name: "mobile", use: { ...devices["Pixel 7"] }, dependencies: ["setup"] },
   ],
   webServer: {
     command: "npm run dev",

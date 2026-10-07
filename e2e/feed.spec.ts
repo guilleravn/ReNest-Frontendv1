@@ -1,6 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Runs against ReNest-Backend's Docker stack (`npm run docker:up` in ../ReNest-Backend). Its seed
+import { SEEDED_SELLER_STATE_PATH } from "./fixtures";
+
+test.use({ storageState: SEEDED_SELLER_STATE_PATH });
+
+// Runs against ReNest-Backend's Docker stack (`npm run docker:up` in ../ReNest-Backend), signed in
+// as the seeded seller (`SEEDED_SELLER_STATE_PATH`, needs E2E_SEED_PASSWORD). Its seed
 // publishes ACTIVE listings that include the ones below (SEED_FEED_LISTING_IDS in the backend's
 // prisma/seed-fixtures.ts); "armchair" matches exactly two of them. The error and empty-feed
 // states can't be reached from here (the fetch runs on the server, out of `page.route`'s reach):
@@ -14,6 +19,10 @@ const SEEDED = {
 const searchBox = (page: Page) => page.getByRole("searchbox", { name: "Buscar por título" });
 
 const feedList = (page: Page) => page.getByRole("main").getByRole("list");
+
+// The feed's own live region. The (tabs) layout also mounts the flash Toast's `role="status"`
+// region, outside <main>, so the feed's is the only one inside it.
+const feedStatus = (page: Page) => page.getByRole("main").getByRole("status");
 
 test("the feed lists the published items", async ({ page }) => {
   await page.goto("/feed");
@@ -48,8 +57,8 @@ test("a search with no matches says so", async ({ page }) => {
   await searchBox(page).press("Enter");
 
   await expect(page).toHaveURL("/feed?q=zzzz-no-match");
-  await expect(page.getByRole("status")).toContainText("Todavía no hay coincidencias");
-  await expect(page.getByRole("status")).toContainText(
+  await expect(feedStatus(page)).toContainText("Todavía no hay coincidencias");
+  await expect(feedStatus(page)).toContainText(
     "Ningún artículo con “zzzz-no-match”. Prueba con otra palabra.",
   );
   const main = page.getByRole("main");
@@ -169,7 +178,7 @@ test("the search field shows a focus ring when reached by keyboard", async ({ pa
 
 test("one persistent status region announces each search's outcome", async ({ page }) => {
   await page.goto("/feed");
-  const status = page.getByRole("status");
+  const status = feedStatus(page);
   await expect(status).toHaveText(/^\d+ artículos encontrados\.$/);
   const region = await status.elementHandle();
 
@@ -181,7 +190,7 @@ test("one persistent status region announces each search's outcome", async ({ pa
 
   // Same element throughout: a live region re-inserted on every search would go unannounced.
   expect(await region?.evaluate((el) => el.isConnected)).toBe(true);
-  await expect(page.getByRole("status")).toHaveCount(1);
+  await expect(feedStatus(page)).toHaveCount(1);
 });
 
 test("a deep link opens the feed already filtered", async ({ page }) => {

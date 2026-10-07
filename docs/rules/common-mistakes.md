@@ -34,3 +34,6 @@ to the doc with the full rule.
     plan.
 16. Changing dependencies without updating the stack table in
     [architecture.md](../architecture.md#stack) in the same commit.
+17. Reading the `renest_token` cookie outside `lib/auth/session.ts` (or `apiFetch`), treating
+    `src/proxy.ts` as the authorization, or redirecting to an unvalidated `next` (INV-5,
+    [frontend-invariants.md](frontend-invariants.md)).

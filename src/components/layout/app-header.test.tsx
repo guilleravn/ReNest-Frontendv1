@@ -24,10 +24,10 @@ describe("AppHeader", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
-  it("shows the user's initial when it is known", () => {
-    render(<AppHeader userInitial="t" />);
+  it("renders the account menu it receives", () => {
+    render(<AppHeader accountMenu={<button type="button">Mi cuenta</button>} />);
 
-    expect(screen.getByRole("img", { name: "Mi cuenta" })).toHaveTextContent("T");
+    expect(screen.getByRole("button", { name: "Mi cuenta" })).toBeInTheDocument();
   });
 
   it("links back to the parent page on detail pages", () => {
