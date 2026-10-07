@@ -16,7 +16,10 @@ export default async function RegisterPage({ searchParams }: PageProps<"/registe
 
   return (
     <>
-      <AuthCard title="Crea tu cuenta" subtitle="Únete a una comunidad de segunda mano verificada.">
+      <AuthCard
+        title="Crea tu cuenta"
+        subtitle="Únete a una comunidad de segunda mano de confianza."
+      >
         <RegisterForm zones={zones} />
       </AuthCard>
       <p className="text-muted text-sm">
