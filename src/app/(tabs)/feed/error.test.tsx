@@ -12,14 +12,6 @@ describe("FeedError", () => {
     expect(screen.queryByText(/status 500/)).not.toBeInTheDocument();
   });
 
-  it("keeps the page heading", () => {
-    render(<FeedError error={new Error("boom")} retry={vi.fn()} />);
-
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Encuentra algo con historia" }),
-    ).toBeInTheDocument();
-  });
-
   it("retries when the user asks to", async () => {
     const user = userEvent.setup();
     const retry = vi.fn();

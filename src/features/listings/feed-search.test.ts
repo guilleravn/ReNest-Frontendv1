@@ -13,6 +13,15 @@ describe("parseSearchQuery", () => {
     expect(parseSearchQuery(value)).toBe(expected);
   });
 
+  // The backend answers 400 to a `q` with control characters: they must never reach it.
+  it.each([
+    ["arm\u0000chair\u001F", "armchair"],
+    ["\u007F\tlamp\n", "lamp"],
+    ["\u0000\u001F\u007F", ""],
+  ])("strips control characters from %j", (value, expected) => {
+    expect(parseSearchQuery(value)).toBe(expected);
+  });
+
   it(`caps the query at ${MAX_SEARCH_QUERY_LENGTH} characters`, () => {
     expect(parseSearchQuery("a".repeat(200))).toHaveLength(MAX_SEARCH_QUERY_LENGTH);
   });
@@ -43,6 +52,19 @@ describe("buildFeedSearchHref", () => {
 
     expect(buildFeedSearchHref(params, "oak")).toBe("/feed?category=muebles&q=oak");
     expect(buildFeedSearchHref(params, "")).toBe("/feed?category=muebles");
+  });
+
+  it("starts a different search from the first page", () => {
+    const params = new URLSearchParams("q=lamp&page=3");
+
+    expect(buildFeedSearchHref(params, "oak")).toBe("/feed?q=oak");
+    expect(buildFeedSearchHref(params, "")).toBe("/feed");
+  });
+
+  it("keeps the page when the search does not change", () => {
+    expect(buildFeedSearchHref(new URLSearchParams("q=lamp&page=3"), " lamp ")).toBe(
+      "/feed?q=lamp&page=3",
+    );
   });
 
   it("does not mutate the params it receives", () => {

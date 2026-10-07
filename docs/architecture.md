@@ -95,10 +95,15 @@ Notes on `GET /feed`:
 
 - Shared with the backend work package of BO-5 (BO-43 on this side). Every ACTIVE listing,
   including the current user's own. `q` is a case-insensitive title search; the backend trims it
-  and rejects more than 120 characters, so the frontend trims and caps it the same way
+  and rejects more than 120 characters or any control character (U+0000–U+001F, U+007F), so the
+  frontend strips, trims and caps it the same way
   ([feed-search.ts](../src/features/listings/feed-search.ts)) and only sends `q` when non-blank.
 - `400` on an invalid `q`/`page`/`pageSize` **or any unknown param**: never forward page URL
-  params blindly (e.g. a future `?category=` needs its own contract first).
+  params blindly.
+- This row is the **base contract** (BO-5). `category` arrives with BO-6 (PR
+  guilleravn/ReNest-Frontend#10 rebases on top of BO-5 and adds the category chips and the
+  `category` param to `getFeed`). Until then `?category=` is kept in the page URL by
+  `buildFeedSearchHref` (search, clear, "Limpiar búsqueda") but never sent to `GET /feed`.
 - `photoUrl` and `priceCents`: same caveats as `GET /listings` above. Pagination: same as above
   ("Mostrando N de M artículos").
 

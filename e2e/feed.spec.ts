@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 // publishes ACTIVE listings that include the ones below (SEED_FEED_LISTING_IDS in the backend's
 // prisma/seed-fixtures.ts); "armchair" matches exactly two of them. The error and empty-feed
 // states can't be reached from here (the fetch runs on the server, out of `page.route`'s reach):
-// they are covered by the error.tsx and EmptyFeed unit tests.
+// they are covered by the ErrorBoundary, error.tsx and EmptyFeed unit tests.
 const SEEDED = {
   leatherArmchair: "Leather armchair",
   oakArmchair: "Oak armchair",
@@ -52,6 +52,43 @@ test("a search with no matches says so", async ({ page }) => {
   await expect(page.getByRole("status")).toContainText(
     "Ningún artículo con “zzzz-no-match”. Prueba con otra palabra.",
   );
+  const main = page.getByRole("main");
+  await expect(main.getByText("Todavía no hay coincidencias", { exact: true })).toBeVisible();
+  await expect(
+    main.getByText("Ningún artículo con “zzzz-no-match”. Prueba con otra palabra.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(main.getByRole("link", { name: "Limpiar búsqueda" })).toBeVisible();
+});
+
+test("the no-match state's link clears the search and restores the feed", async ({ page }) => {
+  await page.goto("/feed?q=zzzz-no-match");
+
+  await page.getByRole("main").getByRole("link", { name: "Limpiar búsqueda" }).click();
+
+  await expect(page).toHaveURL("/feed");
+  await expect(searchBox(page)).toHaveValue("");
+  await expect(feedList(page).getByText(SEEDED.deskLamp)).toBeVisible();
+});
+
+test("leaving a search before its debounce fires does not bring it back", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/feed?q=armchair");
+  await expect(feedList(page).getByRole("link")).toHaveCount(2);
+  // Freeze page timers so the debounced search can't fire before the logo click.
+  await page.clock.pauseAt(Date.now() + 1000);
+
+  await searchBox(page).pressSequentially("s");
+  await page.getByRole("link", { name: "Inicio de ReNest" }).click();
+  await expect(page).toHaveURL("/feed");
+  await page.clock.runFor(1000); // well past the debounce
+  await page.clock.resume(); // React also needs timers to reveal the new results
+
+  // A stale search would land as `?q=armchairs` (no desk lamp) after the logo's `/feed`.
+  await expect(feedList(page).getByText(SEEDED.deskLamp)).toBeVisible();
+  await expect(page).toHaveURL("/feed");
+  await expect(searchBox(page)).toHaveValue("");
 });
 
 test("clearing the search restores the full feed", async ({ page }) => {

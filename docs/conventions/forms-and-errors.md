@@ -49,7 +49,13 @@ acceptance criteria name).
   possible to the slow data. Skeletons match the final content's dimensions (no layout shift).
 - ✅ Render errors: `error.tsx` per segment (it is a Client Component: needs `"use client"`),
   with the message in `role="alert"` and a retry button. Check the Next 16 docs for its exact
-  props.
+  props. Render it with `ErrorState` (`components/ui/error-state.tsx`).
+- ✅ An error that should leave the rest of the page usable (e.g. search results under a search
+  field): wrap that section in `ErrorBoundary` (`components/ui/error-boundary.tsx`, Next's
+  `catchError`, "Reintentar" = `router.refresh()` + reset). Next only clears it on a pathname
+  change, so give it a `key` from the search params the section depends on. Keep `error.tsx` as
+  the segment's last resort, and put the page heading in the segment's `layout.tsx` so it stays
+  above `error.tsx`.
 - ✅ Missing resource: `notFound()` + `not-found.tsx`, not a generic error.
 - ✅ Expected errors (validation, business 4xx) are **returned** as state (`{ status: "error" }`);
   unexpected ones are **thrown** and caught by the boundary.

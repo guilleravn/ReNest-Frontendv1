@@ -1,3 +1,4 @@
+import { FEED_EMPTY_MESSAGE, FEED_NO_MATCH_TITLE, getNoMatchHint } from "./feed-copy";
 import type { FeedResponse } from "./schemas";
 
 /** Status-region text while a search is loading. */
@@ -10,9 +11,7 @@ export const FEED_LOADING_ANNOUNCEMENT = "Cargando artículos…";
  */
 export function getFeedAnnouncement(q: string, { data, meta }: FeedResponse): string {
   if (data.length === 0) {
-    return q
-      ? `Todavía no hay coincidencias. Ningún artículo con “${q}”. Prueba con otra palabra.`
-      : "Todavía no hay artículos publicados.";
+    return q ? `${FEED_NO_MATCH_TITLE}. ${getNoMatchHint(q)}` : FEED_EMPTY_MESSAGE;
   }
 
   return meta.total === 1 ? "1 artículo encontrado." : `${meta.total} artículos encontrados.`;

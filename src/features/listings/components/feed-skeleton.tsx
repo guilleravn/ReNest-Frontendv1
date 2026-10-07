@@ -1,3 +1,5 @@
+import { FEED_GRID_CLASS_NAME } from "./feed-grid";
+
 const PLACEHOLDER_CARDS = 6;
 
 /**
@@ -8,7 +10,7 @@ export function FeedSkeleton() {
   return (
     <div aria-hidden="true">
       <div className="bg-surface-sunken mt-5 h-4 w-24 rounded-sm motion-safe:animate-pulse" />
-      <ul className="mt-3 grid grid-cols-3 gap-4 max-lg:grid-cols-2 max-sm:grid-cols-1">
+      <ul className={`mt-3 ${FEED_GRID_CLASS_NAME}`}>
         {Array.from({ length: PLACEHOLDER_CARDS }, (_, index) => (
           <li key={index} className="border-border bg-surface overflow-hidden rounded-xl border">
             <div className="bg-surface-sunken aspect-[4/3] motion-safe:animate-pulse" />

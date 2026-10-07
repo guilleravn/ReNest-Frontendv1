@@ -13,6 +13,34 @@ Format:
 
 ---
 
+## 2026-10-07 · BO-43 (PR #9 review fixes) · frontend-issue-implementer
+
+- `SearchField` is a `useReducer`. Instead of one `expectedQuery` it keeps `pendingQueries`
+  (searches it asked for that haven't landed, oldest first): an older own search that lands after
+  a newer Enter/× is recognised as its own (dropped with everything older), so it can't flash. Any
+  `?q=` change not in that list is an outside navigation: it syncs the input, clears the list and
+  bumps `outsideChangeCount`, whose layout effect cancels the pending debounce (the "type, then
+  click the logo within 300 ms" bug). The URL params are read through a ref (updated in a layout
+  effect) when the search is applied, not from the keystroke's render.
+- Search errors: Next 16.3 has a stable component-level boundary, `catchError` from `next/error`
+  (`retry()` = `router.refresh()` + reset in a transition), so `components/ui/error-boundary.tsx`
+  wraps it instead of a hand-written class. It wraps the results, `key={q}`.
+- **Deviation:** the status region has no client boundary. `FeedStatus` catches the `getFeed`
+  failure on the server (`unstable_rethrow` first) and announces `FEED_ERROR_MESSAGE` as text. A
+  client boundary there would stay stuck on the error text after a successful "Reintentar",
+  because retry only resets the results' boundary; the server text is recomputed on every refresh.
+  Still one `role="status"`; the visible error is the `role="alert"` in `ErrorState`.
+- `feed/error.test.tsx` lost its "keeps the page heading" case: the `<h1>` moved to
+  `feed/layout.tsx`, covered by `feed/layout.test.tsx` and `e2e/app-shell.spec.ts`.
+- The error → clear/retry → feed recovery isn't in the e2e suite: the only way to make
+  `GET /feed` fail is stopping the API container, which breaks the parallel specs. It was checked
+  by hand that way (desktop, production build): the error shows under a usable search field, the
+  status region says the error, "Reintentar" recovers once the API is back (results and status),
+  and clearing the search recovers too. Unit tests cover the boundary (retry, reset on key).
+- `buildFeedSearchHref` drops `page` only when `q` actually changes (a no-op search keeps it).
+- E2E: the debounce/logo spec uses Playwright's clock (`pauseAt` → type → click → `runFor` →
+  `resume`); it fails against the previous `SearchField`. Full run: 50/50 (desktop + mobile).
+
 ## 2026-10-06 · BO-43 (QA changes requested) · frontend-issue-implementer
 
 - `SearchField` now follows `?q=` after navigations it didn't make (home link, back/forward),

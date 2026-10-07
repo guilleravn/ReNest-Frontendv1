@@ -143,6 +143,56 @@ describe("SearchField", () => {
     expect(searchBox()).toHaveValue("oak chair");
   });
 
+  it("drops a pending search when the URL's search changes from outside, e.g. the home link", async () => {
+    currentParams = new URLSearchParams("q=mesa");
+    const { user, rerender } = setup("mesa");
+    await user.type(searchBox(), "l");
+
+    currentParams = new URLSearchParams();
+    rerender(<SearchField defaultQuery="" />); // home link, before the debounce fires
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(searchBox()).toHaveValue("");
+  });
+
+  it("does not flash an older search of its own that lands after a newer one", async () => {
+    const { user, rerender } = setup();
+    await user.type(searchBox(), "oak");
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await user.type(searchBox(), " chair{Enter}");
+
+    rerender(<SearchField defaultQuery="oak" />); // the older search lands late
+
+    expect(searchBox()).toHaveValue("oak chair");
+
+    rerender(<SearchField defaultQuery="oak chair" />);
+
+    expect(searchBox()).toHaveValue("oak chair");
+  });
+
+  it("does not flash the old search when an older search of its own lands after a clear", async () => {
+    const { user, rerender } = setup();
+    await user.type(searchBox(), "oak");
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await user.click(screen.getByRole("button", { name: "Limpiar búsqueda" }));
+
+    rerender(<SearchField defaultQuery="oak" />); // the older search lands late
+
+    expect(searchBox()).toHaveValue("");
+  });
+
+  it("keeps params that changed while the search was waiting on the debounce", async () => {
+    const { user, rerender } = setup();
+    await user.type(searchBox(), "oak");
+
+    currentParams = new URLSearchParams("category=muebles");
+    rerender(<SearchField defaultQuery="" />);
+    act(() => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+
+    expect(replace).toHaveBeenCalledWith("/feed?category=muebles&q=oak", { scroll: false });
+  });
+
   it("does not search after it unmounts", async () => {
     const { user, unmount } = setup();
 

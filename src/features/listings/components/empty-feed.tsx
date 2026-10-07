@@ -1,54 +1,40 @@
+import Link from "next/link";
+
+import { PackageSearchIcon } from "@/components/ui/icons";
+
+import { FEED_EMPTY_MESSAGE, FEED_NO_MATCH_TITLE, getNoMatchHint } from "../feed-copy";
+
 type EmptyFeedProps = {
   /** The applied search; `""` when the feed itself is empty. */
   query: string;
+  /** Feed URL with the search removed and every other param kept (see `buildFeedSearchHref`). */
+  clearSearchHref: string;
 };
 
 /**
- * Empty state of the home feed: a search with no matches, or no published listings at all. Not a
- * live region: the feed page's persistent status region announces the same message.
+ * Empty state of the home feed: a search with no matches (with a way back to the whole feed), or
+ * no published listings at all. Not a live region: the feed page's persistent status region
+ * announces the same message.
  */
-export function EmptyFeed({ query }: EmptyFeedProps) {
+export function EmptyFeed({ query, clearSearchHref }: EmptyFeedProps) {
   return (
     <div className="mx-auto max-w-sm py-16 text-center">
       <PackageSearchIcon className="text-subtle mx-auto size-10" />
       {query ? (
         <>
-          <p className="text-foreground mt-3 text-base font-semibold">
-            Todavía no hay coincidencias
-          </p>
-          <p className="text-muted mt-1 text-sm break-words">
-            Ningún artículo con “{query}”. Prueba con otra palabra.
-          </p>
+          <p className="text-foreground mt-3 text-base font-semibold">{FEED_NO_MATCH_TITLE}</p>
+          <p className="text-muted mt-1 text-sm break-words">{getNoMatchHint(query)}</p>
+          <Link
+            href={clearSearchHref}
+            scroll={false}
+            className="border-border-strong bg-surface text-foreground hover:border-primary focus-visible:outline-ring mt-5 inline-flex rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Limpiar búsqueda
+          </Link>
         </>
       ) : (
-        <p className="text-foreground mt-3 text-base font-semibold">
-          Todavía no hay artículos publicados.
-        </p>
+        <p className="text-foreground mt-3 text-base font-semibold">{FEED_EMPTY_MESSAGE}</p>
       )}
     </div>
-  );
-}
-
-// Inline copy of Lucide's package-search icon, as in the reference app. Decorative.
-function PackageSearchIcon(props: React.ComponentProps<"svg">) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 22V12" />
-      <path d="M20.27 18.27 22 20" />
-      <path d="M21 10.498V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.729l7 4a2 2 0 0 0 2 .001l.98-.559" />
-      <path d="M3.29 7 12 12l8.71-5" />
-      <path d="m7.5 4.27 8.997 5.148" />
-      <circle cx="18.5" cy="16.5" r="2.5" />
-    </svg>
   );
 }
